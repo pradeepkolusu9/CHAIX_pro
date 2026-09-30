@@ -1,0 +1,20 @@
+node_modules
+dist
+dist-ssr
+coverage
+.shots
+.env
+.env.local
+.env.*.local
+*.local
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.log
+npm-debug.log*
+.vercel
+.netlify
+
+# Design council notes are working documents, not shipped source.
+docs/design/

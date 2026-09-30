@@ -1,0 +1,386 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* LawLink design system v2 — council-issued.
+   Source of truth: docs/council/01-visual-language.md + docs/council/02-composition.md */
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  /* Flat canvas. All ambient light lives in the fixed .backdrop-fx layer so it
+     never repaints on scroll. */
+  body {
+    @apply bg-surface-0 text-fg font-sans antialiased;
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-sans tracking-[-0.02em];
+  }
+
+  p {
+    @apply font-body;
+  }
+
+  ::selection {
+    background: rgba(77, 124, 254, 0.32);
+    color: #fff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.09);
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.18);
+    background-clip: content-box;
+  }
+
+  :focus-visible {
+    outline: 2px solid #4d7cfe;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* ================================================================
+     SURFACES — four layers. Separation is tonal, never an outline.
+     ================================================================ */
+  .sheet {
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.038) 0%, rgba(255, 255, 255, 0.012) 42%, rgba(255, 255, 255, 0.006) 100%),
+      #0d1220;
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.055),
+      0 28px 56px -34px rgba(0, 0, 0, 0.85);
+  }
+
+  .sheet-lg {
+    border-radius: 28px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.045) 0%, rgba(255, 255, 255, 0.015) 44%, rgba(255, 255, 255, 0.006) 100%),
+      #0d1220;
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.07),
+      0 40px 80px -32px rgba(0, 0, 0, 0.9);
+  }
+
+  /* Interactive surfaces: options, rail rows, selectable items. */
+  .pressable {
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+      0 8px 20px -18px rgba(0, 0, 0, 0.9);
+    transition:
+      background 160ms ease,
+      box-shadow 160ms ease,
+      transform 160ms ease;
+  }
+  .pressable:hover {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03));
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+      0 14px 28px -18px rgba(0, 0, 0, 0.95);
+  }
+  .pressable:active {
+    transform: translateY(1px);
+  }
+
+  /* The only place backdrop-blur is allowed. */
+  .overlay-panel {
+    background: rgba(11, 16, 25, 0.82);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+      0 48px 96px -28px rgba(0, 0, 0, 0.95);
+  }
+
+  /* The ONE permitted gradient: the focal sheet's top light. */
+  .sheet-focal {
+    position: relative;
+    overflow: hidden;
+  }
+  .sheet-focal::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(79, 124, 255, 0.1) 0%, transparent 34%);
+  }
+  .sheet-focal > * {
+    position: relative;
+  }
+
+  /* ================================================================
+     TYPE — bound scale. `micro` (11px) is the floor for all product text.
+     ================================================================ */
+  .display {
+    @apply font-sans text-display;
+  }
+  .t1 {
+    @apply font-sans text-t1 text-white;
+  }
+  .t2 {
+    @apply font-sans text-t2 text-white;
+  }
+  .t3 {
+    @apply font-sans text-t3 text-white;
+  }
+  .lead {
+    @apply font-body text-lead text-fg;
+  }
+  .copy {
+    @apply font-body text-body text-fg-muted;
+  }
+  .caption {
+    @apply font-body text-caption text-fg-dim;
+  }
+  .eyebrow {
+    @apply font-sans text-micro font-semibold uppercase tracking-[0.14em] text-fg-dim;
+  }
+
+  /* Legal disclaimer. A contrast reviewer measured the previous 12px regular
+     version at 1.62:1 on the canvas, and its red "112" at 1.85:1 — the hue was
+     invisible and the text was effectively decorative. Legal text has to be
+     READABLE, so it uses fg-muted (6.1:1) at 13px. Orange is deliberately not
+     used here: that hue is reserved for streak and time pressure. */
+  .disclaimer {
+    @apply font-body text-body leading-relaxed text-fg-muted;
+  }
+  .disclaimer strong,
+  .disclaimer b {
+    @apply font-bold text-fg;
+  }
+
+  .num-xl {
+    @apply font-sans text-num-xl tnum text-fg;
+  }
+  .num-lg {
+    @apply font-sans text-num-lg tnum text-fg;
+  }
+  .num {
+    @apply font-sans text-num tnum text-fg;
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  /* The legal-case title: the emotional centre of the product, and the one
+     place the serif is allowed to be large. */
+  .serif {
+    @apply font-serif tracking-[-0.008em];
+  }
+  .case-title {
+    @apply font-serif text-[28px] font-medium leading-[1.15] tracking-[-0.015em] text-white sm:text-[32px];
+  }
+
+  /* ================================================================
+     CHIPS — squared tags, never pills, never outlined by default.
+     ================================================================ */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-md bg-white/[0.05] px-2 py-1 font-sans text-micro font-semibold text-fg-muted;
+  }
+  .chip-xp {
+    @apply chip bg-xp-400/[0.09] text-xp-300 ring-1 ring-inset ring-xp-400/20;
+  }
+  .chip-good {
+    @apply chip bg-good/[0.08] text-good ring-1 ring-inset ring-good/20;
+  }
+  .chip-danger {
+    @apply chip bg-danger/[0.08] text-danger ring-1 ring-inset ring-danger/20;
+  }
+  .chip-warn {
+    @apply chip bg-warn/[0.08] text-warn ring-1 ring-inset ring-warn/20;
+  }
+  .chip-electric {
+    @apply chip bg-electric-500/[0.09] text-electric-300 ring-1 ring-inset ring-electric-500/20;
+  }
+
+  /* ================================================================
+     BUTTONS
+     ================================================================ */
+  .btn {
+    @apply inline-flex select-none items-center justify-center gap-2 rounded-xl px-4 py-2.5 font-sans text-body font-semibold
+           transition-all duration-200 active:translate-y-px disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply btn bg-electric-500 text-white shadow-glow hover:bg-electric-400;
+  }
+  .btn-violet {
+    @apply btn bg-violet2-500 text-white hover:bg-violet2-400;
+  }
+  .btn-ghost {
+    @apply btn text-fg-muted hover:bg-white/[0.06] hover:text-fg;
+  }
+  .btn-quiet {
+    @apply btn text-fg-dim hover:bg-white/[0.05] hover:text-fg-muted;
+  }
+  .btn-danger {
+    @apply btn bg-danger text-white hover:brightness-110;
+  }
+  .btn-lg {
+    @apply px-6 py-3.5 text-lead;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-caption;
+  }
+
+  /* ================================================================
+     PROGRESS — one hue per meaning, lit from above, no 2-hue gradient.
+     ================================================================ */
+  .track {
+    @apply relative h-2 w-full overflow-hidden rounded-full bg-white/[0.06];
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.4);
+  }
+  .track-fill {
+    @apply h-full rounded-full;
+    background: linear-gradient(180deg, #6a8bff 0%, #4d7cfe 62%, #2f5fe0 100%);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.22);
+  }
+  .track-fill-xp {
+    @apply h-full rounded-full;
+    background: linear-gradient(180deg, #ffe7a8 0%, #f5b942 58%, #e5a320 100%);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.35);
+  }
+  .track-fill-good {
+    @apply h-full rounded-full;
+    background: linear-gradient(180deg, #4ade80 0%, #22c55e 60%, #16a34a 100%);
+  }
+  .track-fill-muted {
+    @apply h-full rounded-full;
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  /* ================================================================
+     NAV
+     ================================================================ */
+  .nav-pill {
+    @apply relative flex items-center gap-3 rounded-xl px-3 py-2.5 font-sans text-body font-semibold
+           text-fg-dim transition-all duration-200 hover:bg-white/[0.05] hover:text-fg;
+  }
+  .nav-pill-active {
+    @apply text-white;
+    background: rgba(255, 255, 255, 0.06);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
+  }
+
+  /* ================================================================
+     LAYOUT PRIMITIVES
+     ================================================================ */
+  .measure {
+    max-width: 68ch;
+  }
+  .hud > * + * {
+    @apply border-t border-white/[0.06] py-4;
+  }
+  .hud > *:first-child {
+    @apply pt-0;
+  }
+  .hud > *:last-child {
+    @apply pb-0;
+  }
+
+  /* ================================================================
+     AMBIENT — 3 fixed composited layers: one lamp, grain, vignette.
+     ================================================================ */
+  .backdrop-fx {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .fx-lamp {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(1100px 620px at 22% -12%, rgba(79, 124, 255, 0.13), transparent 64%),
+      radial-gradient(820px 520px at 86% 108%, rgba(245, 185, 66, 0.05), transparent 62%);
+  }
+  .fx-grain {
+    position: absolute;
+    inset: 0;
+    opacity: 0.045;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+  }
+  .fx-vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(130% 100% at 50% 0%, transparent 36%, rgba(3, 5, 10, 0.66) 100%);
+  }
+
+  /* Once per page, top band, desktop only. */
+  .dotgrid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 22px 22px;
+    mask-image: radial-gradient(ellipse 70% 46% at 50% 0%, #000 18%, transparent 76%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 46% at 50% 0%, #000 18%, transparent 76%);
+    pointer-events: none;
+  }
+
+  /* The single gold word on the landing hero. */
+  .text-gradient-xp {
+    @apply bg-gradient-to-br from-xp-200 via-xp-400 to-xp-600 bg-clip-text text-transparent;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .safe-b {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
