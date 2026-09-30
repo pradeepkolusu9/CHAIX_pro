@@ -1,18 +1,18 @@
 ﻿/**
- * LawLink AI â€” curated awareness knowledge base.
+ * LawLink AI — curated awareness knowledge base.
  *
  * This is a deterministic intent engine over verified content, not a live LLM.
  * Every response is assembled from data that has been checked against an
  * official source, and always carries a disclaimer.
  *
  * The response shape is fixed:
- *   POSSIBLE LEGAL AREA â†’ what this means â†’ WHAT YOU CAN DO (steps)
- *   â†’ RELEVANT RESOURCE â†’ SOURCE â†’ DISCLAIMER
+ *   POSSIBLE LEGAL AREA → what this means → WHAT YOU CAN DO (steps)
+ *   → RELEVANT RESOURCE → SOURCE → DISCLAIMER
  */
 import { DISCLAIMER } from './resources.js'
 
 export const QUICK_CATEGORIES = [
-  { key: 'cybercrime', label: 'Cybercrime', q: 'I lost money to a scam â€” what do I do?' },
+  { key: 'cybercrime', label: 'Cybercrime', q: 'I lost money to a scam — what do I do?' },
   { key: 'consumer', label: 'Consumer', q: 'My online order was never delivered. What can I do?' },
   { key: 'student', label: 'Student', q: 'I am being harassed in college. What are my rights?' },
   { key: 'workplace', label: 'Workplace', q: 'My salary was not paid on time. Is that legal?' },
@@ -24,7 +24,7 @@ export const QUICK_CATEGORIES = [
 export const GREETING = {
   area: 'LawLink AI',
   meaning:
-    'Ask me a situation in plain words â€” what happened, and I will point you to the legal area it falls under, what your rights are, and the exact next steps to take today.',
+    'Ask me a situation in plain words — what happened, and I will point you to the legal area it falls under, what your rights are, and the exact next steps to take today.',
   steps: [],
 }
 
@@ -36,7 +36,7 @@ export const INTENTS = [
   // ------------------------------------------------------------- consumer
   {
     id: 'c-order-missing',
-    area: 'Consumer Rights â€” defective / undelivered goods',
+    area: 'Consumer Rights — defective / undelivered goods',
     module: 'consumer',
     keywords: [
       'order', 'delivery', 'delivered', 'refund', 'money back', 'not received', 'never arrived',
@@ -44,7 +44,7 @@ export const INTENTS = [
       'didnt come', 'did not come', 'not delivered', 'waiting for',
     ],
     meaning:
-      'When you pay for a product or service online, you become a consumer under the Consumer Protection Act, 2019. A product that never arrives, arrives damaged, or is not what was described is a deficiency in service or a defective product â€” it is not something you have to just accept.',
+      'When you pay for a product or service online, you become a consumer under the Consumer Protection Act, 2019. A product that never arrives, arrives damaged, or is not what was described is a deficiency in service or a defective product — it is not something you have to just accept.',
     rights: [
       'A refund or replacement for a product that was not delivered as promised',
       'Information about the delivery timeline, the seller and the terms of sale',
@@ -56,13 +56,13 @@ export const INTENTS = [
       { step: 3, text: 'If the platform refuses or does not respond, call the National Consumer Helpline on 1915.' },
       { step: 4, text: 'For a claim above the District Commission limit, file with a Consumer Disputes Redressal Commission under the Consumer Protection Act, 2019.' },
     ],
-    resource: { label: 'National Consumer Helpline â€” 1915', href: 'https://consumerhelpline.gov.in', number: '1915' },
+    resource: { label: 'National Consumer Helpline — 1915', href: 'https://consumerhelpline.gov.in', number: '1915' },
     source: { label: 'Consumer Protection Act, 2019', href: 'https://www.indiacode.nic.in' },
     urgent: false,
   },
   {
     id: 'c-defective',
-    area: 'Consumer Rights â€” defective product or warranty',
+    area: 'Consumer Rights — defective product or warranty',
     module: 'consumer',
     keywords: [
       'defective', 'warranty', 'broken', 'not working', 'damaged', 'repair', 'replacement',
@@ -77,24 +77,24 @@ export const INTENTS = [
     ],
     steps: [
       { step: 1, text: 'Write to the seller or the manufacturer in writing with the invoice and a description of the defect.' },
-      { step: 2, text: 'Keep the written complaint and any reply â€” a complaint you never sent is difficult to prove.' },
+      { step: 2, text: 'Keep the written complaint and any reply — a complaint you never sent is difficult to prove.' },
       { step: 3, text: 'If there is no response, call the National Consumer Helpline on 1915 and file online.' },
       { step: 4, text: 'Escalate to a District / State / National Consumer Disputes Redressal Commission. Keep every bill for the repair or replacement.' },
     ],
-    resource: { label: 'National Consumer Helpline â€” 1915', href: 'https://consumerhelpline.gov.in', number: '1915' },
+    resource: { label: 'National Consumer Helpline — 1915', href: 'https://consumerhelpline.gov.in', number: '1915' },
     source: { label: 'Consumer Protection Act, 2019', href: 'https://www.indiacode.nic.in' },
     urgent: false,
   },
   {
     id: 'c-fees',
-    area: 'Consumer Rights â€” coaching / course fees',
+    area: 'Consumer Rights — coaching / course fees',
     module: 'consumer',
     keywords: [
       'coaching', 'course fee', 'course', 'institute', 'tuition', 'batch', 'admission fee',
       'refund fee', 'fees refund', 'training fee', 'education service', 'college fee',
     ],
     meaning:
-      'Education and coaching are treated as a "service" under the Consumer Protection Act, 2019. If you paid for a course that was never delivered, or a refund that was promised and not given, that is a consumer grievance â€” you are not simply at the mercy of the institute.',
+      'Education and coaching are treated as a "service" under the Consumer Protection Act, 2019. If you paid for a course that was never delivered, or a refund that was promised and not given, that is a consumer grievance — you are not simply at the mercy of the institute.',
     rights: [
       'A refund of fees for a service that was not delivered',
       'Information about the refund policy before you paid',
@@ -106,7 +106,7 @@ export const INTENTS = [
       { step: 3, text: 'Escalate to the National Consumer Helpline on 1915 and file the complaint online.' },
       { step: 4, text: 'If a large amount is involved, consult a District Consumer Disputes Redressal Commission.' },
     ],
-    resource: { label: 'National Consumer Helpline â€” 1915', href: 'https://consumerhelpline.gov.in', number: '1915' },
+    resource: { label: 'National Consumer Helpline — 1915', href: 'https://consumerhelpline.gov.in', number: '1915' },
     source: { label: 'Consumer Protection Act, 2019', href: 'https://www.indiacode.nic.in' },
     urgent: false,
   },
@@ -114,7 +114,7 @@ export const INTENTS = [
   // ------------------------------------------------------------ cybercrime
   {
     id: 'cy-money-lost',
-    area: 'Cybercrime â€” financial fraud and money debited',
+    area: 'Cybercrime — financial fraud and money debited',
     module: 'cybercrime',
     keywords: [
       'scam', 'fraud', 'fraudulent', 'money debited', 'debited', 'money gone', 'lost money',
@@ -131,16 +131,16 @@ export const INTENTS = [
     steps: [
       { step: 1, text: 'From another phone, call your bank immediately. Ask them to freeze the account and block UPI for now.' },
       { step: 2, text: 'Call 1930 or file on cybercrime.gov.in. Note down the complaint number they give you.' },
-      { step: 3, text: 'Screenshot everything â€” the payment, the sender ID, the messages, the time. Do not delete anything.' },
+      { step: 3, text: 'Screenshot everything — the payment, the sender ID, the messages, the time. Do not delete anything.' },
       { step: 4, text: 'If money was sent to a mobile number or a UPI ID, give that to the police along with your complaint number. Early reports can freeze the account the money went to.' },
     ],
-    resource: { label: 'National Cyber Crime Reporting Portal â€” helpline 1930', href: 'https://cybercrime.gov.in', number: '1930' },
+    resource: { label: 'National Cyber Crime Reporting Portal — helpline 1930', href: 'https://cybercrime.gov.in', number: '1930' },
     source: { label: 'Information Technology Act, 2000', href: 'https://www.indiacode.nic.in' },
     urgent: true,
   },
   {
     id: 'cy-otp',
-    area: 'Cybercrime â€” OTP, PIN and fake calls',
+    area: 'Cybercrime — OTP, PIN and fake calls',
     module: 'cybercrime',
     keywords: [
       'otp', 'pin', 'cvv', 'call from bank', 'fake call', 'bank called', 'kyc', 'vkyc',
@@ -153,7 +153,7 @@ export const INTENTS = [
       'A right to a fraud report from your bank if money is moved without your consent',
     ],
     steps: [
-      { step: 1, text: 'If you have not shared it, you are safe â€” just end the call. Never read an OTP out loud.' },
+      { step: 1, text: 'If you have not shared it, you are safe — just end the call. Never read an OTP out loud.' },
       { step: 2, text: 'If you already shared it, call your bank right away and ask them to freeze the account and block UPI.' },
       { step: 3, text: 'Change your banking password and your email password, and turn on two-step verification.' },
       { step: 4, text: 'Report the call on cybercrime.gov.in so the number is investigated.' },
@@ -164,7 +164,7 @@ export const INTENTS = [
   },
   {
     id: 'cy-phishing',
-    area: 'Cybercrime â€” phishing links and fake profiles',
+    area: 'Cybercrime — phishing links and fake profiles',
     module: 'cybercrime',
     keywords: [
       'phishing', 'fake link', 'suspicious link', 'lottery', 'won', 'prize', 'free money',
@@ -179,7 +179,7 @@ export const INTENTS = [
     ],
     steps: [
       { step: 1, text: 'Do not click the link and do not enter any details. Delete it and block the number.' },
-      { step: 2, text: 'Take a full-screen screenshot first â€” with the date, the number and the full message â€” before you delete it.' },
+      { step: 2, text: 'Take a full-screen screenshot first — with the date, the number and the full message — before you delete it.' },
       { step: 3, text: 'If a fake profile is using your identity, report it in the app and tighten the privacy of your ID photo.' },
       { step: 4, text: 'If any money moved, follow the financial fraud route: bank first, then 1930 / cybercrime.gov.in.' },
     ],
@@ -189,7 +189,7 @@ export const INTENTS = [
   },
   {
     id: 'cy-stolen',
-    area: 'Cybercrime â€” stolen phone or hacked account',
+    area: 'Cybercrime — stolen phone or hacked account',
     module: 'cybercrime',
     keywords: [
       'phone stolen', 'phone lost', 'mobile stolen', 'account hacked', 'hacked',
@@ -204,7 +204,7 @@ export const INTENTS = [
     ],
     steps: [
       { step: 1, text: 'Call your bank first from another phone and freeze the account and UPI.' },
-      { step: 2, text: 'Block your SIM through the carrier, and reset your email password first â€” email is how attackers get back in.' },
+      { step: 2, text: 'Block your SIM through the carrier, and reset your email password first — email is how attackers get back in.' },
       { step: 3, text: 'Change passwords on every account that used the same one, and turn on two-step verification.' },
       { step: 4, text: 'File on cybercrime.gov.in with screenshots. Remote-wipe the phone if it is still on your Google or Apple account.' },
     ],
@@ -216,7 +216,7 @@ export const INTENTS = [
   // ------------------------------------------------------------- privacy
   {
     id: 'pv-data',
-    area: 'Digital Privacy â€” apps, Aadhaar and personal data',
+    area: 'Digital Privacy — apps, Aadhaar and personal data',
     module: 'privacy',
     keywords: [
       'privacy', 'personal data', 'aadhaar', 'aadhar', 'kyc', 'camera access', 'mic access',
@@ -224,19 +224,19 @@ export const INTENTS = [
       'face recognition', 'scraped', 'facial', 'my number is known', 'sold',
     ],
     meaning:
-      'The Digital Personal Data Protection Act, 2023 sets out how your personal data may be processed and gives you the right to access, correct and erase it. Under the Information Technology Act, 2000, publishing private information without consent is an offence. Your consent has to be free, specific, informed and unambiguous â€” and you can withdraw it.',
+      'The Digital Personal Data Protection Act, 2023 sets out how your personal data may be processed and gives you the right to access, correct and erase it. Under the Information Technology Act, 2000, publishing private information without consent is an offence. Your consent has to be free, specific, informed and unambiguous — and you can withdraw it.',
     rights: [
       'A right to know what data an organisation holds about you and to have it corrected',
       'A right to have data erased and to nominate someone to exercise your rights',
       'A grievance route to a Data Protection Board through the organisation\'s grievance officer',
     ],
     steps: [
-      { step: 1, text: 'Do not upload Aadhaar or documents to an app unless it is genuinely required â€” a college app usually needs a masked number, not the full document.' },
+      { step: 1, text: 'Do not upload Aadhaar or documents to an app unless it is genuinely required — a college app usually needs a masked number, not the full document.' },
       { step: 2, text: 'Review app permissions on your phone. Deny camera, microphone and contacts unless the feature needs them.' },
       { step: 3, text: 'If your data was misused, send a written grievance to the organisation\'s grievance officer and keep the acknowledgement.' },
-      { step: 4, text: 'If the response is unsatisfactory, escalate through the Data Protection Board process published by MeitY. Note that the DPDP Act comes into force in stages â€” check the current status at meity.gov.in.' },
+      { step: 4, text: 'If the response is unsatisfactory, escalate through the Data Protection Board process published by MeitY. Note that the DPDP Act comes into force in stages — check the current status at meity.gov.in.' },
     ],
-    resource: { label: 'MeitY â€” Digital Personal Data Protection', href: 'https://www.meity.gov.in' },
+    resource: { label: 'MeitY — Digital Personal Data Protection', href: 'https://www.meity.gov.in' },
     source: { label: 'Digital Personal Data Protection Act, 2023', href: 'https://www.meity.gov.in' },
     urgent: false,
   },
@@ -244,7 +244,7 @@ export const INTENTS = [
   // ------------------------------------------------------------- student
   {
     id: 'st-ragging',
-    area: 'Student Rights â€” ragging and campus discipline',
+    area: 'Student Rights — ragging and campus discipline',
     module: 'student',
     keywords: [
       'ragging', 'ragged', 'senior', 'hostel', 'junior', 'pushed', 'forced', 'targeted',
@@ -263,13 +263,13 @@ export const INTENTS = [
       { step: 3, text: 'If the institution does not act, complain to the affiliating university and the relevant regulatory authority.' },
       { step: 4, text: 'If there is a threat to your safety, call 112 or 100 and say so plainly. You do not have to wait for the committee to respond first.' },
     ],
-    resource: { label: 'Police emergency â€” 112', href: 'https://112.gov.in', number: '112' },
+    resource: { label: 'Police emergency — 112', href: 'https://112.gov.in', number: '112' },
     source: { label: 'Ragging Prohibition Act, 2009', href: 'https://www.indiacode.nic.in' },
     urgent: false,
   },
   {
     id: 'st-grievance',
-    area: 'Student Rights â€” exams, marksheets and fees',
+    area: 'Student Rights — exams, marksheets and fees',
     module: 'student',
     keywords: [
       'marksheet', 'marks sheet', 're-evaluation', 'reevaluation', 're evaluation', 'result',
@@ -286,11 +286,11 @@ export const INTENTS = [
     ],
     steps: [
       { step: 1, text: 'Put the complaint in writing to the office of the Controller of Examinations or the Head of Department, and keep a copy.' },
-      { step: 2, text: 'Ask for the date of the next examination board meeting â€” most institutions are required to consider grievances there.' },
+      { step: 2, text: 'Ask for the date of the next examination board meeting — most institutions are required to consider grievances there.' },
       { step: 3, text: 'If there is no response, escalate to the affiliating university. Use the RTI Act, 2005 to ask for the records you are not being given.' },
-      { step: 4, text: 'For fees paid to a private institute, it is also a consumer complaint under the Consumer Protection Act, 2019 â€” helpline 1915.' },
+      { step: 4, text: 'For fees paid to a private institute, it is also a consumer complaint under the Consumer Protection Act, 2019 — helpline 1915.' },
     ],
-    resource: { label: 'National Consumer Helpline â€” 1915', href: 'https://consumerhelpline.gov.in', number: '1915' },
+    resource: { label: 'National Consumer Helpline — 1915', href: 'https://consumerhelpline.gov.in', number: '1915' },
     source: { label: 'Ragging Prohibition Act, 2009 / Consumer Protection Act, 2019', href: 'https://www.indiacode.nic.in' },
     urgent: false,
   },
@@ -298,7 +298,7 @@ export const INTENTS = [
   // ---------------------------------------------------------- workplace
   {
     id: 'wp-salary',
-    area: 'Workplace Rights â€” unpaid salary, contract and hours',
+    area: 'Workplace Rights — unpaid salary, contract and hours',
     module: 'workplace',
     keywords: [
       'salary', 'not paid', 'unpaid', 'salary delay', 'wages', 'pending salary', 'no contract',
@@ -307,7 +307,7 @@ export const INTENTS = [
       'gratuity', 'minimum wage', 'labour', 'employee',
     ],
     meaning:
-      'The labour codes in India â€” the Code on Wages, 2019, the Industrial Relations Code, 2020, the Code on Social Security, 2020 and the Occupational Safety, Health and Working Conditions Code, 2020 â€” set the ground rules on wages, hours, leave, provident fund and termination. Minimum wages and shop and establishment rules are set by your state, so the exact entitlement depends on where the job is.',
+      'The labour codes in India — the Code on Wages, 2019, the Industrial Relations Code, 2020, the Code on Social Security, 2020 and the Occupational Safety, Health and Working Conditions Code, 2020 — set the ground rules on wages, hours, leave, provident fund and termination. Minimum wages and shop and establishment rules are set by your state, so the exact entitlement depends on where the job is.',
     rights: [
       'Payment of wages as agreed, and equal wages for equal work regardless of gender',
       'Rest periods and weekly off as required by the applicable state rules',
@@ -326,7 +326,7 @@ export const INTENTS = [
   },
   {
     id: 'wp-maternity',
-    area: 'Workplace Rights â€” maternity benefit',
+    area: 'Workplace Rights — maternity benefit',
     module: 'workplace',
     keywords: [
       'maternity', 'maternity leave', 'pregnant', 'pregnancy', 'baby', 'childbirth',
@@ -342,7 +342,7 @@ export const INTENTS = [
     steps: [
       { step: 1, text: 'Give written notice to your employer in the form the Act requires, keeping a copy.' },
       { step: 2, text: 'If the employer refuses, put the complaint in writing to the Inspector appointed under the Maternity Benefit Act.' },
-      { step: 3, text: 'For a medical emergency, do not wait for paperwork â€” use 112 and then complain in writing.' },
+      { step: 3, text: 'For a medical emergency, do not wait for paperwork — use 112 and then complain in writing.' },
     ],
     resource: { label: 'Ministry of Labour and Employment', href: 'https://labour.gov.in' },
     source: { label: 'Maternity Benefit (Amendment) Act, 2017', href: 'https://labour.gov.in' },
@@ -352,7 +352,7 @@ export const INTENTS = [
   // ---------------------------------------------------------------- road
   {
     id: 'rd-dui',
-    area: 'Road Laws â€” drink driving and licence issues',
+    area: 'Road Laws — drink driving and licence issues',
     module: 'road',
     keywords: [
       'drunk', 'drink', 'driving', 'dui', 'alcohol', 'booze', 'bac', 'breath test', 'breathalyzer',
@@ -363,7 +363,7 @@ export const INTENTS = [
     meaning:
       'The Motor Vehicles Act, 1988 governs this. The prescribed limit is 30 mg of alcohol per 100 ml of blood. Riding or driving after drinking is an offence under section 185, and the court may disqualify your driving licence for a period of six months to three years. Riding without a valid licence or registration is an offence in its own right, and third-party motor insurance is compulsory.',
     rights: [
-      'A right to a lawful, reasoned process â€” an challan can be challenged before the designated authority or in court',
+      'A right to a lawful, reasoned process — an challan can be challenged before the designated authority or in court',
       'The benefit of a third-party insurance policy, which is compulsory under the Motor Vehicles Act',
       'Compensation in an accident where you are not at fault, through the insurer and the Motor Accident Claims Tribunal',
     ],
@@ -373,7 +373,7 @@ export const INTENTS = [
       { step: 3, text: 'Make the claim to the insurer. If the insurer does not settle, the matter can be taken to the Motor Accident Claims Tribunal.' },
       { step: 4, text: 'On highways, the Ministry of Road Transport and Highways helpline is 1033.' },
     ],
-    resource: { label: 'MoRTH highway patrol â€” 1033', href: 'https://morth.nic.in', number: '1033' },
+    resource: { label: 'MoRTH highway patrol — 1033', href: 'https://morth.nic.in', number: '1033' },
     source: { label: 'Motor Vehicles Act, 1988', href: 'https://indiacode.nic.in' },
     urgent: false,
   },
@@ -381,7 +381,7 @@ export const INTENTS = [
   // -------------------------------------------------------------- safety
   {
     id: 'sf-stalking',
-    area: "Women's Safety â€” stalking, threats and unsafe situations",
+    area: "Women's Safety — stalking, threats and unsafe situations",
     module: 'safety',
     keywords: [
       'stalking', 'stalker', 'following me', 'eve teasing', 'followed', 'threat', 'threatening',
@@ -392,23 +392,23 @@ export const INTENTS = [
       'Stalking and criminal intimidation are offences under the Bharatiya Nyaya Sanhita, 2023, which replaced the Indian Penal Code with effect from 1 July 2024. You do not have to wait until something happens. Support is free, confidential and available at any hour.',
     rights: [
       'Protection against stalking, criminal intimidation and assault or criminal force',
-      'A complaint that the police are expected to register as an FIR for a cognizable offence â€” you may ask for a Zero FIR, which can be registered at any police station and later transferred',
+      'A complaint that the police are expected to register as an FIR for a cognizable offence — you may ask for a Zero FIR, which can be registered at any police station and later transferred',
       'A protection order and residence order under the Domestic Violence Act, 2005 where the person is a domestic partner',
       'Free legal aid under section 12(c) of the Legal Services Authorities Act, 1987',
     ],
     steps: [
       { step: 1, text: 'If you are in immediate danger, call 112. If you prefer a women operator, call the Women Helpline on 181 or the Women Power Line on 1091.' },
-      { step: 2, text: 'Preserve the evidence â€” messages, call logs, photos, CCTV. Do not delete anything.' },
+      { step: 2, text: 'Preserve the evidence — messages, call logs, photos, CCTV. Do not delete anything.' },
       { step: 3, text: 'Report at your local police station. You can ask for an FIR, and for a Zero FIR if the station is not in your area of jurisdiction.' },
       { step: 4, text: 'Ask your local Legal Services Authority about free legal aid, and about a protection order under the Domestic Violence Act, 2005.' },
     ],
-    resource: { label: 'Women Helpline â€” 181  Â·  Women Power Line â€” 1091', href: 'https://wcd.gov.in', number: '181' },
+    resource: { label: 'Women Helpline — 181  ·  Women Power Line — 1091', href: 'https://wcd.gov.in', number: '181' },
     source: { label: 'Bharatiya Nyaya Sanhita, 2023 / Domestic Violence Act, 2005', href: 'https://nalsa.gov.in' },
     urgent: true,
   },
   {
     id: 'sf-workplace',
-    area: "Women's Safety â€” sexual harassment",
+    area: "Women's Safety — sexual harassment",
     module: 'safety',
     keywords: [
       'harassment', 'harassed', 'sexual harassment', 'unwanted', 'inappropriate', 'touching',
@@ -420,7 +420,7 @@ export const INTENTS = [
     rights: [
       'The right to file a complaint with the Internal Complaints Committee of the institution or employer',
       'A right to the option of filing with the Local Complaints Committee where the ICC has not been constituted',
-      'Confidentiality â€” the identity of the complainant is protected',
+      'Confidentiality — the identity of the complainant is protected',
     ],
     steps: [
       { step: 1, text: 'Write the complaint down. Note the date, place, what happened and who was present.' },
@@ -428,7 +428,7 @@ export const INTENTS = [
       { step: 3, text: 'Ask for the outcome in writing within the period the Act allows.' },
       { step: 4, text: 'If the ICC is not constituted or does not act, approach the Local Complaints Committee, or the police. You can also contact the Women Helpline on 181 for support.' },
     ],
-    resource: { label: 'Women Helpline â€” 181', href: 'https://wcd.gov.in', number: '181' },
+    resource: { label: 'Women Helpline — 181', href: 'https://wcd.gov.in', number: '181' },
     source: { label: 'Sexual Harassment of Women at Workplace Act, 2013', href: 'https://www.indiacode.nic.in' },
     urgent: true,
   },
@@ -448,15 +448,15 @@ export const INTENTS = [
     rights: [
       'Free legal services under the Legal Services Authorities Act, 1987',
       'Lok Adalat, where a settlement is treated as a decree of a civil court',
-      'Access to the courts â€” Article 32 of the Constitution for fundamental rights, Article 226 for High Courts',
+      'Access to the courts — Article 32 of the Constitution for fundamental rights, Article 226 for High Courts',
     ],
     steps: [
       { step: 1, text: 'Visit your district Legal Services Authority for an eligibility check and a lawyer.' },
       { step: 2, text: 'Check whether the next lok adalat covers your matter at the NALSA site.' },
-      { step: 3, text: 'For an urgent police complaint, go to the police station â€” an FIR can be registered at any station for a cognizable offence, and you may ask for a Zero FIR.' },
+      { step: 3, text: 'For an urgent police complaint, go to the police station — an FIR can be registered at any station for a cognizable offence, and you may ask for a Zero FIR.' },
       { step: 4, text: 'Use eCourts for case status and filings, and LawLink AI to identify the legal area before you go.' },
     ],
-    resource: { label: 'NALSA â€” National Legal Services Authority', href: 'https://nalsa.gov.in' },
+    resource: { label: 'NALSA — National Legal Services Authority', href: 'https://nalsa.gov.in' },
     source: { label: 'Legal Services Authorities Act, 1987', href: 'https://www.indiacode.nic.in' },
     urgent: false,
   },
@@ -471,23 +471,23 @@ export const INTENTS = [
     meaning:
       'You do not need a lawyer to handle an emergency. 112 connects to police, fire and ambulance. 100 is the local police control room, 101 for an ambulance, and 1091 or 181 if you need a woman to answer.',
     rights: [
-      'Emergency response without any precondition â€” no fee, no paperwork',
+      'Emergency response without any precondition — no fee, no paperwork',
       'A police complaint that is expected to be registered for a cognizable offence',
       'Free legal aid afterwards through the district Legal Services Authority',
     ],
     steps: [
       { step: 1, text: 'Call 112 for any emergency. If 112 does not connect, call 100 for police or 101 for an ambulance.' },
       { step: 2, text: 'For a woman in distress, the Women Helpline on 181 and the Women Power Line on 1091 are available.' },
-      { step: 3, text: 'For cyber fraud, call 1930 â€” it is free and staffed 24x7.' },
+      { step: 3, text: 'For cyber fraud, call 1930 — it is free and staffed 24x7.' },
       { step: 4, text: 'For a consumer complaint, call 1915. Once things are safe, use LawLink AI to work out the legal area.' },
     ],
-    resource: { label: 'All-in-one emergency response â€” 112', href: 'https://112.gov.in', number: '112' },
+    resource: { label: 'All-in-one emergency response — 112', href: 'https://112.gov.in', number: '112' },
     source: { label: 'National Emergency Response Centre', href: 'https://112.gov.in' },
     urgent: true,
   },
   {
     id: 'g-rights',
-    area: 'Fundamental Rights â€” which right is at play',
+    area: 'Fundamental Rights — which right is at play',
     module: 'fundamental',
     keywords: [
       'my rights', 'fundamental right', 'constitution', 'article', 'equality', 'discrimination',
@@ -497,19 +497,19 @@ export const INTENTS = [
     meaning:
       'The Constitution of India guarantees a set of fundamental rights in Part III, and the courts can enforce them. For a student the most immediate ones are equality before the law, freedom of speech, the right to education, the right to information, and the right to life and personal liberty, which also covers privacy and dignity.',
     rights: [
-      'Equality before the law and protection against discrimination â€” Articles 14, 15 and 16',
-      'Freedom of speech and expression, and freedom to practise a profession â€” Article 19',
-      'The right to life, personal liberty, privacy and dignity â€” Article 21',
-      'The right to ask a public authority for information â€” Right to Information Act, 2005',
-      'The right to a remedy, by approaching the Supreme Court or a High Court â€” Articles 32 and 226',
+      'Equality before the law and protection against discrimination — Articles 14, 15 and 16',
+      'Freedom of speech and expression, and freedom to practise a profession — Article 19',
+      'The right to life, personal liberty, privacy and dignity — Article 21',
+      'The right to ask a public authority for information — Right to Information Act, 2005',
+      'The right to a remedy, by approaching the Supreme Court or a High Court — Articles 32 and 226',
     ],
     steps: [
-      { step: 1, text: 'Name the right you think is affected before you look for a remedy â€” it makes the complaint far clearer.' },
+      { step: 1, text: 'Name the right you think is affected before you look for a remedy — it makes the complaint far clearer.' },
       { step: 2, text: 'For a public institution, use the Right to Information Act, 2005 to ask for the records you are not being shown.' },
       { step: 3, text: 'For something a private party did, the civil or consumer route usually fits better than a fundamental rights complaint.' },
       { step: 4, text: 'A public interest litigation can be filed in the Supreme Court or a High Court, usually through a lawyer. Read the actual text of any law on India Code before you rely on it.' },
     ],
-    resource: { label: 'India Code â€” the actual text of central laws', href: 'https://www.indiacode.nic.in' },
+    resource: { label: 'India Code — the actual text of central laws', href: 'https://www.indiacode.nic.in' },
     source: { label: 'Constitution of India, Part III', href: 'https://www.indiacode.nic.in' },
     urgent: false,
   },

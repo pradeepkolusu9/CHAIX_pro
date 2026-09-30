@@ -1,23 +1,21 @@
-﻿import { useMemo } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, Check } from 'lucide-react'
+import { ArrowRight, Check, Lock } from 'lucide-react'
 
 import {
   Button,
   Card,
   EmptyState,
-  LevelSeal,
-  Pill,
+  Panel,
   ProgressBar,
   SectionHeading,
   Sigil,
-  StatStrip,
   formatNumber,
   sigilGlyph,
 } from '../components/ui/index.jsx'
 import { useStore } from '../lib/store.jsx'
-import { LEVELS, ACCENT, XP_RULES, levelNumber } from '../lib/gamification.js'
+import { LEVELS, XP_RULES, levelNumber } from '../lib/gamification.js'
 import { todayKey } from '../lib/dates.js'
 import { useReducedMotionPref } from '../lib/hooks.js'
 
@@ -86,46 +84,74 @@ function badgeProgress(badge, { impact, stats, streak, bestQuizPct }) {
   }
 }
 
+/* -------------------------------------------------------------------- ring */
+function Ring({ value, max, size = 64, stroke = 7, children }) {
+  const r = (size - stroke) / 2
+  const c = 2 * Math.PI * r
+  const frac = Math.max(0, Math.min(1, max ? value / max : 0))
+  return (
+    <div className="relative grid shrink-0 place-items-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(61,99,245,0.12)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="#f59e0b"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - frac)}
+          style={{ transition: 'stroke-dashoffset .7s cubic-bezier(.16,1,.3,1)' }}
+        />
+      </svg>
+      <div className="absolute inset-0 grid place-items-center">{children}</div>
+    </div>
+  )
+}
+
 /* ------------------------------------------------------------------ badges */
-/**
- * One badge. The mark is the badge's own Sigil at 30px; the colour is never the
- * badge's to choose — it is earned (gold) or it is not (neutral + dimmed).
- * Nothing here is a link: a locked badge must not be clickable.
- */
+/** Unlocked = rich gold tile with glow. Locked = frosted tile that says what unlocks it. */
 function BadgeTile({ badge, reduce }) {
   const unlocked = badge.unlocked
-
   return (
     <motion.div
       variants={{
         hidden: { opacity: 0, y: 12 },
         show: { opacity: 1, y: 0, transition: { duration: reduce ? 0 : 0.28, ease: EASE } },
       }}
-      className="flex items-start gap-3.5"
+      className={`flex flex-col rounded-3xl p-4 sm:p-5 ${
+        unlocked
+          ? 'bg-gradient-to-br from-[#fff4cf] via-[#ffe7a0] to-[#ffd166] shadow-glow-xp ring-1 ring-inset ring-xp-500/40'
+          : 'bg-pure/60 ring-1 ring-inset ring-white/[0.1] backdrop-blur'
+      }`}
     >
       <div
-        className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl ${
-          unlocked ? 'bg-xp-400/[0.10]' : 'bg-white/[0.04]'
+        className={`grid h-14 w-14 place-items-center rounded-2xl ${
+          unlocked ? 'bg-pure/70 shadow-sheet' : 'bg-electric-500/[0.08]'
         }`}
       >
-        <Sigil
-          id={badge.sigil}
-          size={30}
-          className={unlocked ? 'text-xp-300' : 'text-fg-faint opacity-50 grayscale'}
-        />
+        {unlocked ? (
+          <Sigil id={badge.sigil} size={32} className="text-xp-300" />
+        ) : (
+          <Lock size={22} className="text-fg-dim" strokeWidth={2.2} />
+        )}
       </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className={`t3 ${unlocked ? '' : 'text-fg-muted'}`}>{badge.name}</h3>
-          {unlocked ? (
-            <span className="chip-good shrink-0">Unlocked</span>
-          ) : (
-            <span className="chip shrink-0">Locked</span>
-          )}
-        </div>
-        <p className="copy mt-1">{unlocked ? badge.desc : badge.hint}</p>
-      </div>
+      <h3 className="t3 mt-3 text-ink-900">{badge.name}</h3>
+      {unlocked ? (
+        <>
+          <p className="caption mt-1 text-ink-800">{badge.desc}</p>
+          <span className="chip-good mt-3 self-start">
+            <Check size={11} strokeWidth={3} /> Unlocked
+          </span>
+        </>
+      ) : (
+        <>
+          <p className="caption mt-1 text-fg-muted">{badge.hint}</p>
+          <span className="chip mt-3 self-start">Locked</span>
+        </>
+      )}
     </motion.div>
   )
 }
@@ -136,8 +162,7 @@ export default function Achievements() {
   const reduce = useReducedMotionPref()
 
   const bestQuizPct = useMemo(() => {
-    const all = Object.values(stats)
-      .map((s) => (s.quizTotal ? Math.round((s.quizBest / s.quizTotal) * 100) : 0))
+    const all = Object.values(stats).map((s) => (s.quizTotal ? Math.round((s.quizBest / s.quizTotal) * 100) : 0))
     return all.length ? Math.max(0, ...all) : 0
   }, [stats])
 
@@ -166,91 +191,81 @@ export default function Achievements() {
       initial={reduce ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduce ? 0 : 0.3, ease: EASE }}
-      className="space-y-6"
+      className="space-y-12"
     >
-      <SectionHeading
-        eyebrow="Achievements"
-        title="Badges"
-        sub={`${ownedBadges.length} of ${badges.length} badges earned — every one unlocks from real activity on this device.`}
-        action={
-          <Pill tone={ownedBadges.length === badges.length ? 'good' : 'xp'}>
-            {Math.round((ownedBadges.length / Math.max(1, badges.length)) * 100)}% collected
-          </Pill>
-        }
-      />
+      {/* hero summary ------------------------------------------------- */}
+      <Panel className="sheet-focal p-6 sm:p-8">
+        <div className="eyebrow mb-2">Achievements</div>
+        <h1 className="t1">Your badge collection</h1>
+        <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-10">
+          <Ring value={ownedBadges.length} max={badges.length} size={132} stroke={12}>
+            <div className="text-center">
+              <div className="num-lg">{ownedBadges.length}</div>
+              <div className="caption">of {badges.length}</div>
+            </div>
+          </Ring>
+          <div className="grid flex-1 grid-cols-2 gap-6">
+            <div>
+              <div className="eyebrow mb-1.5">Current streak</div>
+              <div className="num-xl text-xp-300">{streak.current}</div>
+              <div className="caption mt-1">
+                {streak.current === 1 ? 'day' : 'days'}
+                {streak.longest > streak.current ? ` · best ${streak.longest}` : ''}
+              </div>
+            </div>
+            <div>
+              <div className="eyebrow mb-1.5">Modules</div>
+              <div className="num-xl">{impact.modulesDone}</div>
+              <div className="caption mt-1">of {impact.modulesTotal} completed</div>
+            </div>
+          </div>
+        </div>
+        <p className="copy mt-5">Every badge unlocks from real activity on this device.</p>
+      </Panel>
 
-      {/* summary — unboxed, on the canvas */}
-      <div>
-        <StatStrip
-          items={[
-            { label: 'Badges earned', value: ownedBadges.length, suffix: `/ ${badges.length}`, tone: 'good' },
-            {
-              label: 'Current streak',
-              value: streak.current,
-              suffix: streak.current === 1 ? ' day' : ' days',
-              tone: 'xp',
-            },
-            { label: 'Modules completed', value: impact.modulesDone, suffix: `/ ${impact.modulesTotal}` },
-          ]}
-        />
-        {streak.longest > streak.current && (
-          <p className="caption mt-3">Best run so far: {streak.longest} days</p>
-        )}
-      </div>
-
-      {/* almost unlocked — honest, never an invented percentage ------------ */}
-      <Card className="p-4 sm:p-5">
-        <div className="eyebrow mb-2">Almost unlocked</div>
-        <h3 className="t3">Closest to yours</h3>
-
+      {/* closest to unlocking ----------------------------------------- */}
+      <section>
+        <SectionHeading eyebrow="Almost there" title="Closest to unlocking" />
         {closest.length === 0 ? (
-          <EmptyState
-            icon={sigilGlyph('legal-legend')}
-            title="Every badge is unlocked"
-            body="The full set is yours. The level ladder below is the next thing to climb."
-          />
+          <Card>
+            <EmptyState
+              icon={sigilGlyph('legal-legend')}
+              title="Every badge is unlocked"
+              body="The full set is yours. The level ladder below is the next thing to climb."
+            />
+          </Card>
         ) : (
-          <ul className="mt-4 divide-y divide-white/[0.05]">
+          <div className="grid gap-4 md:grid-cols-3">
             {closest.map(({ badge, progress }) => (
-              <li key={badge.id} className="py-3.5 first:pt-0 last:pb-0">
-                <div className="flex items-center gap-2.5">
-                  <Sigil id={badge.sigil} size={16} className="shrink-0 text-fg-faint" />
-                  <div className="min-w-0 flex-1">
-                    <div className="t3 truncate">{badge.name}</div>
-                    <div className="caption truncate">{badge.hint}</div>
-                  </div>
-                  {progress && (
-                    <span className="num shrink-0 text-xp-300">{progress.readout}</span>
+              <Card key={badge.id} className="flex flex-col items-start gap-4 p-5">
+                <Ring value={progress ? progress.value : 0} max={progress ? progress.target : 1} size={84} stroke={9}>
+                  <Sigil id={badge.sigil} size={26} className="text-xp-300" />
+                </Ring>
+                <div className="min-w-0">
+                  <h3 className="t2">{badge.name}</h3>
+                  <p className="copy mt-1">{badge.hint}</p>
+                </div>
+                <div className="mt-auto w-full">
+                  {progress ? (
+                    <>
+                      <ProgressBar value={progress.value} max={progress.target} size="sm" variant="xp" />
+                      <p className="caption mt-2">
+                        <span className="font-semibold text-xp-300">{progress.readout}</span> · {progress.label}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="caption">{NO_METRIC}</p>
                   )}
                 </div>
-
-                {progress ? (
-                  <>
-                    <ProgressBar
-                      className="mt-2.5"
-                      value={progress.value}
-                      max={progress.target}
-                      size="sm"
-                      variant="xp"
-                    />
-                    <p className="caption mt-1.5">{progress.label}</p>
-                  </>
-                ) : (
-                  <p className="caption mt-1.5">{NO_METRIC}</p>
-                )}
-              </li>
+              </Card>
             ))}
-          </ul>
+          </div>
         )}
-      </Card>
+      </section>
 
-      {/* the collection — flat cells, no boxes ---------------------------- */}
+      {/* the collection ------------------------------------------------- */}
       <section>
-        <SectionHeading
-          eyebrow="Collection"
-          title="All badges"
-          sub="Locked badges show exactly what unlocks them."
-        />
+        <SectionHeading eyebrow="Collection" title="All badges" sub="Locked badges show exactly what unlocks them." />
         <motion.div
           variants={{
             hidden: {},
@@ -259,7 +274,7 @@ export default function Achievements() {
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.05 }}
-          className="grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2"
+          className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4"
         >
           {badges.map((badge) => (
             <BadgeTile key={badge.id} badge={badge} reduce={reduce} />
@@ -272,45 +287,44 @@ export default function Achievements() {
         <SectionHeading
           eyebrow="Level ladder"
           title="Eight levels, one ladder"
-          sub={`You are level ${levelNumber(level.level)} — ${level.name}.`}
+          sub={`You are level ${levelNumber(level.level)} — ${level.name} · ${formatNumber(level.xp)} XP.`}
         />
-        <Card className="p-4 sm:p-5">
-          <LevelSeal number={levelNumber(level.level)} name={level.name} sub={`${formatNumber(level.xp)} lifetime XP`} className="mb-3" />
-          <ol className="divide-y divide-white/[0.05]">
-            {LEVELS.map((l) => {
-              const done = l.level < level.level
-              const current = l.level === level.level
-              const accent = ACCENT[l.accent] || ACCENT.electric
-              const need = Math.max(0, l.min - level.xp)
-              return (
-                <li
-                  key={l.level}
-                  className={`flex items-center gap-3 py-2.5 ${
-                    current ? `rounded-xl px-3 ${accent.ring} ring-1 ring-inset` : 'px-3'
-                  } ${done ? '' : 'opacity-60'}`}
+        <ol className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-3 pt-2 sm:mx-0 sm:px-0">
+          {LEVELS.map((l) => {
+            const done = l.level < level.level
+            const current = l.level === level.level
+            const need = Math.max(0, l.min - level.xp)
+            return (
+              <li
+                key={l.level}
+                aria-current={current ? 'step' : undefined}
+                className={`relative w-[136px] shrink-0 snap-start rounded-3xl p-4 ${
+                  current
+                    ? 'bg-gradient-to-b from-violet2-500/[0.16] to-violet2-500/[0.05] shadow-glow-violet ring-2 ring-violet2-500/60'
+                    : done
+                      ? 'bg-good/[0.08] ring-1 ring-inset ring-good/25'
+                      : 'bg-pure/60 ring-1 ring-inset ring-white/[0.1]'
+                }`}
+              >
+                <div
+                  className={`grid h-9 w-9 place-items-center rounded-full font-sans text-body font-extrabold ${
+                    current ? 'bg-violet2-500 text-pure' : done ? 'bg-good text-pure' : 'bg-electric-500/10 text-fg-muted'
+                  }`}
                 >
-                  <span className={`num w-8 shrink-0 text-left ${current ? 'text-fg' : 'text-fg-dim'}`}>
-                    {levelNumber(l.level)}
-                  </span>
-                  <span className={`t3 min-w-0 flex-1 truncate ${current ? 'text-white' : 'text-fg-muted'}`}>
-                    {l.name}
-                  </span>
-                  {done ? (
-                    <Check size={15} className="shrink-0 text-good" strokeWidth={2.6} />
-                  ) : current ? (
-                    <span className="chip-electric shrink-0">You are here</span>
-                  ) : (
-                    <span className="num shrink-0 text-fg-dim">{formatNumber(need)} XP</span>
-                  )}
-                </li>
-              )
-            })}
-          </ol>
-        </Card>
+                  {done ? <Check size={16} strokeWidth={3} /> : levelNumber(l.level)}
+                </div>
+                <div className="t3 mt-3">{l.name}</div>
+                <div className={`caption mt-1 ${current ? 'font-semibold text-violet2-300' : done ? 'text-good' : ''}`}>
+                  {current ? 'You are here' : done ? 'Reached' : `${formatNumber(need)} XP to go`}
+                </div>
+              </li>
+            )
+          })}
+        </ol>
       </section>
 
       {/* closing CTA --------------------------------------------------- */}
-      <Card className="p-4 sm:p-5">
+      <Card className="p-5 sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <span className="eyebrow">Next milestone</span>
@@ -325,9 +339,7 @@ export default function Achievements() {
               {level.isMax
                 ? `All ${impact.modulesTotal} modules are done and the top level is reached. Keep the streak alive to hold the title.`
                 : `Finish the remaining module${modulesLeft === 1 ? '' : 's'} to close the set, or bank XP now — every lesson card, scenario and quiz answer moves the ladder.`}
-              {streak.current > 0 && (
-                <span className="text-fg-dim"> Your {streak.current}-day streak is live.</span>
-              )}
+              {streak.current > 0 && <span className="text-fg-dim"> Your {streak.current}-day streak is live.</span>}
             </p>
             {!dailyDone && (
               <p className="caption mt-1.5">

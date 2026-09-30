@@ -88,7 +88,7 @@ function LevelUpModal({ effect, onClose }) {
       {/* scrim first: the world goes away before the modal arrives.
           90, not 88 — Tailwind only ships opacity steps of 5, and an unknown
           step compiles to nothing at all. */}
-      <div className="absolute inset-0 bg-surface-0/90" />
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-sm" />
 
       {/* particles — emitted at the top edge of the card, where people look */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -236,7 +236,7 @@ function BadgeUnlock({ effect, onClose }) {
       exit={{ opacity: 0, transition: { duration: 0.18 } }}
       className="fixed inset-0 z-[110] flex items-center justify-center p-4"
     >
-      <div className="absolute inset-0 bg-surface-0/85" />
+      <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-sm" />
       <motion.div
         initial={{ opacity: 0, scale: 0.96, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}

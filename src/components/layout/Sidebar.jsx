@@ -10,19 +10,19 @@
  *     and no animal ever renders as a face.
  */
 import { NavLink, Link } from 'react-router-dom'
-import { LogOut, RotateCcw, Wifi, WifiOff } from 'lucide-react'
-import { NAV_ITEMS, BRAND } from './nav.js'
+import { LogOut } from 'lucide-react'
+import { NAV_ITEMS, NAV_GROUPS, BRAND } from './nav.js'
 import { useStore, useActions } from '../../lib/store.jsx'
 import { formatNumber } from '../../lib/dates.js'
 import { levelNumber } from '../../lib/gamification.js'
 import { IconBadge, Monogram } from '../ui/index.jsx'
 
 export function Sidebar({ onNavigate }) {
-  const { profile, level, backend, cloud } = useStore()
+  const { profile, level, backend } = useStore()
   const { actions } = useActions()
 
   return (
-    <aside className="hidden h-screen w-[248px] shrink-0 flex-col border-r border-white/[0.06] lg:flex">
+    <aside className="hidden h-screen w-[248px] shrink-0 flex-col border-r border-white/[0.07] bg-pure/60 backdrop-blur-xl lg:flex">
       <div className="flex h-full flex-col">
         {/* brand — the only dot-grid in the chrome */}
         <div className="relative shrink-0 overflow-hidden">
@@ -32,7 +32,7 @@ export function Sidebar({ onNavigate }) {
             onClick={onNavigate}
             className="relative flex items-center gap-2.5 px-5 py-5"
           >
-            <IconBadge icon={BRAND.icon} tone="electric" size="md" />
+            <IconBadge icon={BRAND.icon} tone="solid" size="md" />
             <span className="min-w-0 leading-tight">
               <span className="block font-sans text-[15px] font-extrabold tracking-tight">LAWLINK</span>
               <span className="eyebrow block truncate">Legal literacy, gamified</span>
@@ -43,30 +43,37 @@ export function Sidebar({ onNavigate }) {
         <div className="mx-5 h-px shrink-0 bg-white/[0.06]" />
 
         {/* nav */}
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
-          {NAV_ITEMS.map(({ to, label, icon: NavIcon, end, tone }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={onNavigate}
-              className={({ isActive }) =>
-                `nav-pill ${isActive ? 'nav-pill-active' : ''} ${
-                  tone === 'danger' && !isActive ? 'text-danger' : ''
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <NavIcon
-                    size={17}
-                    strokeWidth={isActive ? 2.3 : 2}
-                    className={isActive ? 'text-fg' : ''}
-                  />
-                  <span className="truncate">{label}</span>
-                </>
-              )}
-            </NavLink>
+        <nav className="flex-1 overflow-y-auto px-3 py-3">
+          {NAV_GROUPS.map((group) => (
+            <div key={group} className="mb-4">
+              <div className="eyebrow mb-1.5 px-3 !text-fg-dim">{group}</div>
+              <div className="space-y-0.5">
+                {NAV_ITEMS.filter((i) => i.group === group).map(({ to, label, icon: NavIcon, end, tone }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    end={end}
+                    onClick={onNavigate}
+                    className={({ isActive }) =>
+                      `nav-pill ${isActive ? 'nav-pill-active' : ''} ${tone === 'danger' && !isActive ? 'text-danger' : ''}`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <span
+                          className={`grid h-8 w-8 shrink-0 place-items-center rounded-[10px] transition-colors ${
+                            isActive ? 'tile tile-solid' : tone === 'danger' ? 'tile tile-danger' : 'text-fg-dim'
+                          }`}
+                        >
+                          <NavIcon size={18} strokeWidth={2} />
+                        </span>
+                        <span className="truncate">{label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
@@ -90,40 +97,13 @@ export function Sidebar({ onNavigate }) {
             </span>
           </NavLink>
 
-          {/* where progress is actually stored */}
-          <div className="flex items-center gap-2 px-3 pb-1" title="Where your progress is stored">
-            <span
-              className={`h-1.5 w-1.5 shrink-0 rounded-full ${cloud ? 'bg-good' : 'bg-fg-faint'}`}
-              aria-hidden="true"
-            />
-            {cloud ? (
-              <Wifi size={11} className="shrink-0 text-fg-dim" />
-            ) : (
-              <WifiOff size={11} className="shrink-0 text-fg-dim" />
-            )}
-            <span className="truncate caption">{backend}</span>
+          <div className="flex items-center justify-between gap-2 px-3 pt-1" title={`Progress is stored: ${backend}`}>
+            {profile?.isDemo ? <span className="chip-xp whitespace-nowrap">Demo</span> : <span className="caption">{backend}</span>}
+            <button onClick={() => actions.logout()} className="btn-quiet btn-sm whitespace-nowrap" title="Sign out" aria-label="Sign out">
+              <LogOut size={14} />
+              Sign out
+            </button>
           </div>
-
-          {profile?.isDemo && (
-            <div className="mt-1 flex gap-1.5 px-1.5">
-              <button
-                onClick={() => actions.loadDemo()}
-                className="btn btn-ghost btn-sm flex-1"
-                title="Reload the demo account state"
-              >
-                <RotateCcw size={12} />
-                Reload
-              </button>
-              <button
-                onClick={() => actions.logout()}
-                className="btn btn-quiet btn-sm"
-                title="Sign out"
-                aria-label="Sign out"
-              >
-                <LogOut size={12} />
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </aside>

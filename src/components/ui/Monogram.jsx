@@ -38,8 +38,8 @@ function hash(str) {
 export const hueFor = (name = '', userId = '') =>
   HUES[hash((userId || String(name).trim().toLowerCase()) || '?') % HUES.length]
 
-const SIZES = { xs: 24, sm: 28, md: 34, lg: 42, xl: 52 }
-const TEXTS = { xs: 'text-[10px]', sm: 'text-[11px]', md: 'text-[13px]', lg: 'text-[15px]', xl: 'text-[18px]' }
+const SIZES = { xs: 28, sm: 30, md: 36, lg: 44, xl: 52 }
+const TEXTS = { xs: 'text-[12px]', sm: 'text-[12px]', md: 'text-[13px]', lg: 'text-[15px]', xl: 'text-[18px]' }
 
 export const Monogram = memo(function Monogram({ name = '', userId, size = 'md', className = '', hue }) {
   const px = SIZES[size] ?? SIZES.md
@@ -52,9 +52,9 @@ export const Monogram = memo(function Monogram({ name = '', userId, size = 'md',
         width: px,
         height: px,
         '--av-h': h,
-        background: 'hsl(var(--av-h) 62% 58% / .16)',
-        boxShadow: 'inset 0 0 0 1px hsl(var(--av-h) 62% 58% / .34)',
-        color: 'hsl(var(--av-h) 78% 74%)',
+        background: 'hsl(var(--av-h) 70% 90%)',
+        boxShadow: 'inset 0 0 0 1px hsl(var(--av-h) 55% 70% / .6)',
+        color: 'hsl(var(--av-h) 65% 26%)',
       }}
     >
       {initialsOf(name)}

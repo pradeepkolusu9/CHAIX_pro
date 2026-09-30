@@ -1,13 +1,10 @@
-﻿/**
+/**
  * Auth — /login
  *
- * Public page rendered inside PublicShell (bare dark page, no sidebar, no top bar).
- *
- * Two rules shape this file:
- *  1. A judge must reach a fully-populated account in one click, so the HACKATHON
- *     DEMO MODE panel is the loudest thing on the page and the only primary button.
- *  2. The auth form is honest — it says out loud that it is a prototype and keeps
- *     no secrets. "Remember me" really does persist a prefill.
+ * Public page (PublicShell: bare canvas, no sidebar).
+ * Desktop: luminous brand panel left, form right. Mobile: the brand panel is dropped and
+ * the right column stacks as demo card -> form.
+ * The ONE primary action is "Try the demo". Sign-in is an honest local prototype.
  */
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -22,74 +19,34 @@ import {
   UserCheck,
   GraduationCap,
   ArrowRight,
-  Target,
-  BookOpen,
   Scale,
   Flame,
   RotateCcw,
   LogOut,
   AlertCircle,
-  Check,
+  Target,
+  ShieldCheck,
+  Trophy,
 } from 'lucide-react'
-import { useStore, useActions, demoState, MODULE_IDS, allModuleStats } from '../lib/store.jsx'
-import {
-  Card,
-  Skeleton,
-  Tabs,
-  ProgressBar,
-  LevelSeal,
-  Button,
-  Figure,
-  formatNumber,
-} from '../components/ui/index.jsx'
-import { BADGES, LEVELS, levelForXp, levelNumber } from '../lib/gamification.js'
+import { useStore, useActions, demoState } from '../lib/store.jsx'
+import { Skeleton, Button, IconBadge, ProgressBar, formatNumber } from '../components/ui/index.jsx'
+import { levelForXp, levelNumber } from '../lib/gamification.js'
 
 const EASE = [0.16, 1, 0.3, 1]
 const rise = (delay = 0) => ({
   initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.3, ease: EASE, delay },
+  transition: { duration: 0.35, ease: EASE, delay },
 })
 
-/* ------------------------------------------------------------------ the demo */
-/* The preview strip is read straight out of the demo snapshot so what a judge
- * sees here is exactly what they get after clicking. */
+/* Read straight from the demo snapshot so the preview matches what you get. */
 const DEMO = demoState()
-const DEMO_STATS = allModuleStats(DEMO.progress)
-const DEMO_BADGE_COUNT = BADGES.filter((b) =>
-  b.test({
-    lessonsCompleted: Object.values(DEMO_STATS).reduce((a, s) => a + s.lessonsRead, 0),
-    bestQuizPct: Math.max(
-      0,
-      ...Object.values(DEMO_STATS).map((s) => (s.quizTotal ? Math.round((s.quizBest / s.quizTotal) * 100) : 0)),
-    ),
-    longestStreak: DEMO.progress.streak.longest,
-    modulesDone: MODULE_IDS.filter((id) => DEMO_STATS[id].completed),
-    sixtySecondCleared: DEMO.progress.sixtySecond.cleared,
-    perfectQuiz: Object.values(DEMO_STATS).some((s) => s.quizTotal > 0 && s.quizBest === s.quizTotal),
-  }),
-).length
 const DEMO_LEVEL = levelForXp(DEMO.progress.xp)
 
-const PITCH = [
-  'Scenarios, not lectures — make the call first, then read the law behind it.',
-  'Every answer cites the Act, the section and an official government link.',
-  'XP, levels and streaks, so knowing your rights becomes a habit.',
-]
-
-const TRUST = [
-  {
-    title: '8 legal modules',
-    body: 'Cybercrime, consumer, road, student, workplace, privacy, safety and fundamental rights.',
-  },
-  {
-    title: '40 scenarios',
-    body: 'Real situations with the right first step, the tempting wrong one, and the law for both.',
-  },
-  {
-    title: 'Verified sources',
-    body: 'Each item carries its Act, an official link and the date it was last checked.',
-  },
+const BENEFITS = [
+  { icon: Target, tone: 'electric', title: 'Scenarios, not lectures', body: 'Make the call first, then read the law behind it.' },
+  { icon: ShieldCheck, tone: 'good', title: 'Every answer cites its source', body: 'The Act, the section and an official link.' },
+  { icon: Trophy, tone: 'xp', title: 'A habit that sticks', body: 'XP, levels and streaks keep you coming back.' },
 ]
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
@@ -97,40 +54,44 @@ const REMEMBER_KEY = 'lawlink:v1:remember'
 
 /* ------------------------------------------------------------------- fields */
 function Field({ id, label, icon: Icon, error, hint, right, ...rest }) {
+  const msgId = `${id}-msg`
   return (
     <div>
-      <label htmlFor={id} className="eyebrow mb-1.5 block">
+      <label htmlFor={id} className="mb-1.5 block text-caption font-semibold text-fg">
         {label}
       </label>
       <div className="relative">
         <Icon
-          size={15}
-          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-fg-dim"
+          size={16}
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-fg-dim"
           strokeWidth={2.2}
         />
         <input
           id={id}
           aria-invalid={error ? 'true' : undefined}
-          className={`pressable w-full py-2.5 pl-10 pr-10 text-body text-fg outline-none placeholder:text-fg-faint focus:ring-2 focus:ring-inset focus:ring-electric-500/50 ${
-            error ? 'ring-2 ring-inset ring-danger/40' : ''
+          aria-describedby={error || hint ? msgId : undefined}
+          className={`pressable min-h-[48px] w-full py-3 pl-11 pr-11 text-body text-fg outline-none placeholder:text-fg-faint focus:ring-2 focus:ring-inset focus:ring-electric-500/50 ${
+            error ? 'ring-2 ring-inset ring-danger/50' : ''
           }`}
           {...rest}
         />
         {right}
       </div>
       {error ? (
-        <p className="mt-1.5 flex items-center gap-1.5 text-caption text-danger">
-          <AlertCircle size={12} strokeWidth={2.4} />
+        <p id={msgId} role="alert" className="mt-1.5 flex items-center gap-1.5 text-caption font-medium text-danger">
+          <AlertCircle size={13} strokeWidth={2.4} />
           {error}
         </p>
       ) : hint ? (
-        <p className="mt-1.5 text-caption text-fg-dim">{hint}</p>
+        <p id={msgId} className="mt-1.5 text-caption text-fg-dim">
+          {hint}
+        </p>
       ) : null}
     </div>
   )
 }
 
-function validate(mode, form) {
+function validate(form) {
   const errors = {}
   const name = form.name.trim()
   const email = form.email.trim()
@@ -247,13 +208,13 @@ export default function Auth() {
 
   const forgotPassword = () =>
     pushToast({
-      title: 'No password reset in the demo',
+      title: 'No password reset here',
       body: 'Accounts live on this device only, so there is no email to reset. Use "Reset all progress" in your profile instead.',
     })
 
   const onSubmit = async (e) => {
     e.preventDefault()
-    const found = validate(mode, form)
+    const found = validate(form)
     setErrors(found)
     if (Object.keys(found).length) return
 
@@ -268,39 +229,29 @@ export default function Auth() {
 
   /* ------------------------------------------------------------- rendering */
   const sessionCard = profile ? (
-    <div className="space-y-5 py-1 text-center">
-      <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-electric-500/10">
-        <UserCheck size={24} className="text-electric-300" strokeWidth={2.1} />
-      </div>
+    <div className="space-y-6 text-center">
+      <IconBadge icon={UserCheck} tone="good" size="lg" className="mx-auto" />
       <div>
-        <div className="eyebrow">Account on this device</div>
-        <h2 className="t3 mt-1.5">{profile.name}</h2>
+        <div className="eyebrow">Signed in on this device</div>
+        <h2 className="t1 mt-2">{profile.name}</h2>
         <p className="copy mt-1">{profile.email || 'No email on this account'}</p>
       </div>
-
-      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
-        <span className="text-body text-fg-muted">
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <span className="chip-electric">
           Level {levelNumber(level.level)} · {level.name}
         </span>
-        <span className="num text-xp-300">{formatNumber(impact.xp)} XP</span>
-        <span className="flex items-center gap-1.5 text-body text-fg-muted">
-          <Flame size={13} strokeWidth={2.2} className="text-warn" />
+        <span className="chip-xp">{formatNumber(impact.xp)} XP</span>
+        <span className="chip-warn">
+          <Flame size={11} strokeWidth={2.4} />
           {impact.streak}-day streak
         </span>
       </div>
-
       <div className="space-y-2">
-        <Button as={Link} to="/dashboard" variant="ghost" className="w-full" iconRight={ArrowRight}>
+        <Button as={Link} to="/dashboard" variant="primary" size="lg" className="w-full" iconRight={ArrowRight}>
           Continue to Dashboard
         </Button>
-        <Button
-          variant="quiet"
-          className="w-full"
-          icon={RotateCcw}
-          loading={resetBusy}
-          onClick={resetDemo}
-        >
-          Load a fresh account
+        <Button variant="quiet" className="w-full" icon={RotateCcw} loading={resetBusy} onClick={resetDemo}>
+          Load the demo account
         </Button>
         <Button variant="quiet" className="w-full" icon={LogOut} loading={outBusy} onClick={signOut}>
           Sign out
@@ -311,17 +262,29 @@ export default function Auth() {
 
   const formCard = (
     <>
-      <div className="pressable mb-5 p-1">
-        {/* scopes, not content types — no icons on these tabs */}
-        <Tabs
-          tabs={[
-            { key: 'signin', label: 'Sign in' },
-            { key: 'signup', label: 'Create account' },
-          ]}
-          value={mode}
-          onChange={switchMode}
-        />
+      <div className="inset mb-6 grid grid-cols-2 gap-1 p-1" role="group" aria-label="Account mode">
+        {[
+          ['signin', 'Sign in'],
+          ['signup', 'Create account'],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={mode === key}
+            onClick={() => switchMode(key)}
+            className={`min-h-[44px] rounded-xl px-3 font-sans text-body font-semibold transition-all ${
+              mode === key ? 'bg-pure text-electric-300 shadow-sheet' : 'text-fg-dim hover:text-fg'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+
+      <h2 className="t2">{mode === 'signin' ? 'Welcome back' : 'Start your streak'}</h2>
+      <p className="copy mb-6 mt-1">
+        {mode === 'signin' ? 'Pick up where you left off.' : 'Takes ten seconds. No card, no email confirmation.'}
+      </p>
 
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         <Field
@@ -344,7 +307,7 @@ export default function Auth() {
             placeholder="VIT Chennai"
             value={form.college}
             onChange={set('college')}
-            hint="Optional — it only labels the leaderboard."
+            hint="Optional. It only labels the leaderboard."
           />
         )}
 
@@ -375,221 +338,162 @@ export default function Auth() {
               type="button"
               onClick={() => setShowPw((v) => !v)}
               aria-label={showPw ? 'Hide password' : 'Show password'}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-fg-dim transition-colors hover:bg-white/10 hover:text-fg"
+              className="absolute right-1.5 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-xl text-fg-dim transition-colors hover:bg-white/10 hover:text-fg"
             >
-              {showPw ? <EyeOff size={15} strokeWidth={2.2} /> : <Eye size={15} strokeWidth={2.2} />}
+              {showPw ? <EyeOff size={16} strokeWidth={2.2} /> : <Eye size={16} strokeWidth={2.2} />}
             </button>
           }
         />
 
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <label className="flex cursor-pointer items-center gap-2 text-caption text-fg-muted">
+          <label className="flex min-h-[44px] cursor-pointer items-center gap-2.5 text-caption text-fg-muted">
             <input
               type="checkbox"
               checked={form.remember}
               onChange={setRemember}
-              className="h-3.5 w-3.5 rounded border-white/20 bg-white/[0.06] accent-electric-500"
+              className="h-4 w-4 rounded accent-electric-500"
             />
             Remember me
           </label>
           <button
             type="button"
             onClick={forgotPassword}
-            className="text-caption font-semibold text-electric-300 transition-colors hover:text-electric-200"
+            className="min-h-[44px] text-caption font-semibold text-electric-300 transition-colors hover:text-electric-700"
           >
             Forgot password?
           </button>
         </div>
 
-        {/* demoted: the ONE primary on this screen is Enter Demo Mode */}
-        <Button
-          type="submit"
-          variant="ghost"
-          size="lg"
-          loading={busy}
-          iconRight={ArrowRight}
-          className="w-full"
-        >
+        {/* secondary weight: the one primary on the page is the demo */}
+        <Button type="submit" variant="ghost" size="lg" loading={busy} iconRight={ArrowRight} className="w-full">
           {mode === 'signin' ? 'Sign in' : 'Create account'}
         </Button>
 
-        <p className="text-caption leading-relaxed text-fg-dim">
-          Prototype authentication — accounts are stored on this device and are not a real login
-          system. Nothing you type is sent anywhere, and there is no password to steal.
+        <p className="text-center text-caption leading-relaxed text-fg-dim">
+          This is a local prototype. Your account stays on this device and nothing you type is sent anywhere.
         </p>
       </form>
     </>
   )
 
+  const demoCard = (
+    <motion.div {...rise(0.08)} className="sheet-lg sheet-focal p-5 sm:p-6">
+      <div className="flex items-center gap-3">
+        <IconBadge icon={Zap} tone="xp" size="md" />
+        <div className="min-w-0">
+          <h2 className="t2">Try the demo, no signup</h2>
+          <p className="caption mt-0.5">A finished account, one click away.</p>
+        </div>
+      </div>
+      <Button variant="primary" size="lg" icon={Zap} loading={demoBusy} onClick={enterDemo} className="mt-5 w-full">
+        Enter Demo Mode
+      </Button>
+      <div className="mt-3 text-center">
+        <button
+          type="button"
+          onClick={resetDemo}
+          disabled={resetBusy}
+          className="min-h-[44px] px-3 text-caption font-semibold text-fg-dim underline-offset-2 transition-colors hover:text-electric-300 hover:underline disabled:opacity-50"
+        >
+          {resetBusy ? 'Resetting…' : 'Reset demo data'}
+        </button>
+      </div>
+    </motion.div>
+  )
+
   return (
-    <div className="min-h-screen px-4 py-6 sm:px-6 sm:py-9">
+    <div className="min-h-screen px-4 py-5 sm:px-6 sm:py-8">
       <div className="mx-auto w-full max-w-6xl">
-        {/* ---------------------------------------------------------- header */}
         <motion.header {...rise(0)} className="flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-electric-500/15">
-              <Scale size={17} className="text-electric-300" strokeWidth={2.3} />
+            <span className="tile tile-solid h-9 w-9 rounded-xl">
+              <Scale size={17} strokeWidth={2.3} />
             </span>
             <span className="text-[15px] font-extrabold tracking-[-0.02em]">LawLink</span>
           </Link>
-          <Link to="/" className="chip transition-colors hover:bg-white/[0.08] hover:text-fg">
+          <Link to="/" className="btn-quiet btn-sm">
             Back to home
           </Link>
         </motion.header>
 
-        {/* ----------------------------------------------------------- body */}
-        <div className="mt-7 grid items-start gap-6 lg:mt-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)] lg:gap-8">
-          {/* ------------------------------------------ left: pitch + demo */}
-          <div className="min-w-0 space-y-8">
-            <motion.div {...rise(0.04)} className="hidden lg:block">
-              <div className="eyebrow">Gamified legal literacy · India</div>
-              <h1 className="t1 mt-3 max-w-lg">Know your rights before you need them.</h1>
-              <p className="lead measure mt-4">
-                Eight modules, forty real situations and a verified helpline directory — built so that
-                someone who has never opened a single Act still knows exactly what to do in the first
-                ten minutes of a problem.
-              </p>
-              <ol className="mt-6 divide-y divide-white/[0.05]">
-                {PITCH.map((text, i) => (
-                  <motion.li key={text} {...rise(0.1 + i * 0.05)} className="flex items-start gap-3 py-2.5">
-                    <span className="eyebrow mt-0.5 w-4 shrink-0">0{i + 1}</span>
-                    <span className="text-body leading-relaxed text-fg-muted">{text}</span>
+        <div className="mt-6 grid items-stretch gap-6 lg:mt-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-10">
+          {/* ------------------------------------------- left: luminous brand panel */}
+          <motion.aside
+            {...rise(0.04)}
+            className="relative hidden min-w-0 flex-col justify-between gap-10 overflow-hidden rounded-[32px] bg-gradient-to-br from-electric-100 via-pure to-xp-200/70 p-10 shadow-sheet-lg lg:flex"
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-violet2-400/25 blur-3xl"
+            />
+            <div className="relative">
+              <div className="eyebrow">Legal literacy for India</div>
+              <h1 className="t1 mt-3 max-w-md text-[40px] leading-[1.05]">Know your rights before you need them.</h1>
+              <ul className="mt-9 space-y-5">
+                {BENEFITS.map((b, i) => (
+                  <motion.li key={b.title} {...rise(0.12 + i * 0.06)} className="flex items-start gap-4">
+                    <IconBadge icon={b.icon} tone={b.tone} size="md" />
+                    <div>
+                      <div className="t3">{b.title}</div>
+                      <p className="copy mt-0.5">{b.body}</p>
+                    </div>
                   </motion.li>
                 ))}
-              </ol>
-            </motion.div>
+              </ul>
+            </div>
 
-            {/* ------------------------------- HACKATHON DEMO MODE — the focal */}
-            <motion.div {...rise(0.1)}>
-              <div className="sheet-lg sheet-focal p-5 sm:p-6">
-                <div className="flex items-center gap-2.5">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-xp-400/[0.12]">
-                    <Zap size={18} className="text-xp-300" strokeWidth={2.2} />
-                  </span>
-                  <div>
-                    <div className="eyebrow text-xp-300">Hackathon demo mode</div>
-                    <h2 className="t2 mt-1">Enter a finished account in one click</h2>
+            {/* mini profile card: the demo account */}
+            <motion.div {...rise(0.3)} className="sheet relative max-w-sm p-5">
+              <div className="flex items-center gap-3">
+                <span className="tile tile-violet h-11 w-11 rounded-2xl text-t3 font-bold">
+                  {DEMO.profile.name.charAt(0)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="t3 truncate">{DEMO.profile.name}</div>
+                  <div className="caption truncate">
+                    Level {levelNumber(DEMO_LEVEL.level)} · {DEMO_LEVEL.name}
                   </div>
                 </div>
-
-                <p className="lead measure mt-4">
-                  Load a fully-built account instantly — Level 4 Legal Explorer, 1,850 XP, 6-day streak,
-                  4 badges, partially completed modules. No signup, no typing.
-                </p>
-
-                {/* preview strip — the state, visible before the click */}
-                <div className="mt-5 flex flex-wrap items-end gap-x-8 gap-y-4 border-y border-white/[0.06] py-4">
-                  <div>
-                    <div className="eyebrow mb-1.5">Total XP</div>
-                    <Figure value={DEMO.progress.xp} size="xl" tone="xp" />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pb-1">
-                    <LevelSeal
-                      number={levelNumber(DEMO_LEVEL.level)}
-                      name={DEMO_LEVEL.name}
-                      sub={`${formatNumber(DEMO_LEVEL.into)} / ${formatNumber(DEMO_LEVEL.span)} XP into this level`}
-                    />
-                    <span className="flex items-center gap-1.5">
-                      <Flame size={14} strokeWidth={2.2} className="text-warn" />
-                      <span className="num">{DEMO.progress.streak.current}</span>
-                      <span className="text-caption text-fg-dim">day streak</span>
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="num">{DEMO_BADGE_COUNT}</span>
-                      <span className="text-caption text-fg-dim">badges</span>
-                    </span>
-                  </div>
-                </div>
-
-                <ProgressBar
-                  className="mt-4"
-                  value={DEMO_LEVEL.pct}
-                  variant="xp"
-                  showLabel
-                  label={`Level ${levelNumber(DEMO_LEVEL.level)} of ${levelNumber(LEVELS.length)} · ${formatNumber(DEMO_LEVEL.toNext)} XP to next`}
-                />
-
-                {/* the ONE primary button on this screen */}
-                <Button
-                  variant="primary"
-                  size="lg"
-                  icon={Zap}
-                  loading={demoBusy}
-                  onClick={enterDemo}
-                  className="mt-5 w-full"
-                >
-                  Enter Demo Mode
-                </Button>
-                <Button
-                  variant="quiet"
-                  size="sm"
-                  icon={RotateCcw}
-                  loading={resetBusy}
-                  onClick={resetDemo}
-                  className="mt-2 w-full"
-                >
-                  Reset demo data
-                </Button>
-                <p className="mt-3 text-center text-caption leading-relaxed text-fg-dim">
-                  The demo is a snapshot held on this device. Resetting restores it exactly, so you can
-                  replay the same flow for the next person in the room.
-                </p>
+                <span className="chip-warn">
+                  <Flame size={11} strokeWidth={2.4} />
+                  {DEMO.progress.streak.current}
+                </span>
+              </div>
+              <ProgressBar className="mt-4" value={DEMO_LEVEL.pct} variant="xp" />
+              <div className="mt-2 flex items-center justify-between">
+                <span className="num text-xp-300">{formatNumber(DEMO.progress.xp)} XP</span>
+                <span className="caption">{formatNumber(DEMO_LEVEL.toNext)} to next level</span>
               </div>
             </motion.div>
-          </div>
+          </motion.aside>
 
-          {/* ------------------------------------------- right: the account */}
-          <motion.div {...rise(0.14)} className="min-w-0">
-            <Card className="p-4 sm:p-6">
+          {/* -------------------------------------------- right: demo + form */}
+          <div className="mx-auto flex w-full min-w-0 max-w-[480px] flex-col gap-5 lg:max-w-none lg:justify-center">
+            {!profile && demoCard}
+
+            <motion.div {...rise(0.14)} className="sheet p-5 sm:p-8">
               {profile ? (
                 sessionCard
               ) : ready ? (
                 formCard
               ) : (
                 <div className="space-y-3 py-2">
-                  <Skeleton className="h-9 w-full rounded-2xl" />
-                  <Skeleton className="h-11 w-full" />
-                  <Skeleton className="h-11 w-full" />
-                  <Skeleton className="h-11 w-full" />
-                  <Skeleton className="h-12 w-full rounded-xl" />
+                  <Skeleton className="h-11 w-full rounded-2xl" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-14 w-full rounded-2xl" />
                 </div>
               )}
-            </Card>
+            </motion.div>
 
-            {/* trust rows — flat, no boxes */}
-            <div className="mt-5 divide-y divide-white/[0.05] border-t border-white/[0.05]">
-              {TRUST.map((t, i) => (
-                <motion.div key={t.title} {...rise(0.18 + i * 0.05)} className="flex items-start gap-3 py-3">
-                  <span className="num mt-0.5 w-4 shrink-0 text-fg-dim">0{i + 1}</span>
-                  <div className="min-w-0">
-                    <div className="t3">{t.title}</div>
-                    <p className="caption mt-0.5">{t.body}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            <p className="mt-5 flex items-start gap-2 text-caption leading-relaxed text-fg-dim">
-              <Check size={12} className="mt-0.5 shrink-0 text-good" strokeWidth={2.6} />
-              LawLink is legal-awareness education for India. It is not a lawyer and it does not give
-              legal advice — read the{' '}
-              <Link to="/about" className="text-electric-300 hover:underline">
-                methodology page
-              </Link>{' '}
-              for exactly how the content is checked.
+            <p className="text-center text-caption leading-relaxed text-fg-dim">
+              LawLink is legal-awareness education, not legal advice.{' '}
+              <Link to="/about" className="font-semibold text-electric-300 hover:underline">
+                How we check our content
+              </Link>
             </p>
-
-            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-caption text-fg-faint">
-              <span className="flex items-center gap-1.5">
-                <Target size={12} strokeWidth={2.2} />
-                Scenario-first
-              </span>
-              <span className="flex items-center gap-1.5">
-                <BookOpen size={12} strokeWidth={2.2} />
-                India Code sources
-              </span>
-            </div>
-          </motion.div>
+          </div>
         </div>
       </div>
     </div>

@@ -8,13 +8,13 @@ export const FACTS = [
     title: 'Not every dispute needs a court',
     body: 'Most consumer and service complaints are resolved earlier through a grievance officer or a lok adalat than in a courtroom. A lok adalat is a legal settlement meeting, and an award made there is treated as a decree of a civil court.',
     link: 'https://nalsa.gov.in',
-    linkLabel: 'NALSA â€” National Legal Services Authority',
+    linkLabel: 'NALSA — National Legal Services Authority',
     module: 'consumer',
   },
   {
     id: 'f2',
     title: 'Your OTP is a lock, not a form',
-    body: 'An OTP changes every minute and only comes to you. That is why no bank, support agent or government office will ever ask you to read it out. If someone does, it is a scam â€” full stop.',
+    body: 'An OTP changes every minute and only comes to you. That is why no bank, support agent or government office will ever ask you to read it out. If someone does, it is a scam — full stop.',
     link: 'https://cybercrime.gov.in',
     linkLabel: 'National Cyber Crime Reporting Portal',
     module: 'cybercrime',
@@ -24,7 +24,7 @@ export const FACTS = [
     title: 'Section 65B decides if your screenshot counts',
     body: 'Digital records have to be produced in a form the law recognises. That is why a full-screen screenshot showing the time and sender is stronger evidence than a cropped one.',
     link: 'https://www.indiacode.nic.in',
-    linkLabel: 'India Code â€” Information Technology Act, 2000',
+    linkLabel: 'India Code — Information Technology Act, 2000',
     module: 'cybercrime',
   },
   {
@@ -32,7 +32,7 @@ export const FACTS = [
     title: 'Buying online still makes you a consumer',
     body: 'The Consumer Protection Act, 2019 covers online purchases and services. A defective product or a service you paid for but never received is a consumer complaint, and the helpline is 1915.',
     link: 'https://consumerhelpline.gov.in',
-    linkLabel: 'National Consumer Helpline â€” 1915',
+    linkLabel: 'National Consumer Helpline — 1915',
     module: 'consumer',
   },
   {
@@ -40,7 +40,7 @@ export const FACTS = [
     title: 'Ragging is a legal offence, not a tradition',
     body: 'Ragging is prohibited under the Ragging Prohibition Act, 2009. Every institution is required to have an anti-ragging committee, and ragging can attract punishment including fine and exclusion from the institution.',
     link: 'https://nios.ac.in',
-    linkLabel: 'NIOS â€” anti-ragging guidance',
+    linkLabel: 'NIOS — anti-ragging guidance',
     module: 'student',
   },
   {
@@ -54,9 +54,9 @@ export const FACTS = [
   {
     id: 'f7',
     title: 'Article 32 is the heart of the Constitution',
-    body: 'Dr Ambedkar called it so. It is your right to go directly to the Supreme Court to enforce your fundamental rights â€” and the right to a remedy, not just a right on paper.',
+    body: 'Dr Ambedkar called it so. It is your right to go directly to the Supreme Court to enforce your fundamental rights — and the right to a remedy, not just a right on paper.',
     link: 'https://www.indiacode.nic.in',
-    linkLabel: 'India Code â€” Constitution of India, Part III',
+    linkLabel: 'India Code — Constitution of India, Part III',
     module: 'fundamental',
   },
   {
@@ -64,7 +64,7 @@ export const FACTS = [
     title: 'Privacy sits inside the right to life',
     body: 'In K.S. Puttaswamy (2017) the Supreme Court held that privacy is intrinsic to Article 21. That case is the foundation for India\'s data protection law.',
     link: 'https://www.indiacode.nic.in',
-    linkLabel: 'India Code â€” Constitution of India, Part III',
+    linkLabel: 'India Code — Constitution of India, Part III',
     module: 'privacy',
   },
   {
@@ -80,7 +80,7 @@ export const FACTS = [
     title: 'Free legal aid is a right, not a favour',
     body: 'Section 12(c) of the Legal Services Authorities Act, 1987 guarantees free legal services to women and children among others. Ask any district Legal Services Authority.',
     link: 'https://nalsa.gov.in',
-    linkLabel: 'NALSA â€” free legal aid',
+    linkLabel: 'NALSA — free legal aid',
     module: 'safety',
   },
   {

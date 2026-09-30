@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Info } from 'lucide-react'
 
 import {
   Button,
@@ -11,13 +11,11 @@ import {
   Pill,
   ProgressBar,
   SectionHeading,
-  StatStrip,
-  Tabs,
   formatNumber,
   resolveHues,
 } from '../components/ui/index.jsx'
 import { useStore } from '../lib/store.jsx'
-import { podiumClass, buildBoard, TABS } from '../data/leaderboard.js'
+import { buildBoard, TABS } from '../data/leaderboard.js'
 import { XP_RULES, levelNumber } from '../lib/gamification.js'
 import { useReducedMotionPref } from '../lib/hooks.js'
 
@@ -34,49 +32,36 @@ const XP_SOURCES = [
   { key: 'streakMilestone', label: '7-day streak bonus', note: 'Paid every 7 days' },
 ]
 
-/* --------------------------------------------------------------- podium card */
-function PodiumCard({ row, reduce }) {
-  const isYou = row.isYou
-  const height =
-    row.rank === 1 ? 'sm:pb-9' : row.rank === 2 ? 'sm:mt-8 sm:pb-7' : 'sm:mt-16 sm:pb-5'
-  const order = row.rank === 1 ? 'sm:order-2' : row.rank === 2 ? 'sm:order-1' : 'sm:order-3'
+/* --------------------------------------------------------------- podium */
+const PODIUM = {
+  1: { block: 'h-28 sm:h-36', tile: 'from-xp-200 to-xp-400', ring: 'ring-xp-500/50', glow: 'shadow-glow-xp', label: '1st' },
+  2: { block: 'h-20 sm:h-24', tile: 'from-slate-100 to-slate-300', ring: 'ring-slate-400/50', glow: '', label: '2nd' },
+  3: { block: 'h-14 sm:h-16', tile: 'from-amber-200 to-amber-500', ring: 'ring-amber-600/40', glow: '', label: '3rd' },
+}
 
+function PodiumStep({ row, reduce }) {
+  const p = PODIUM[row.rank]
+  const order = row.rank === 1 ? 'order-2' : row.rank === 2 ? 'order-1' : 'order-3'
   return (
     <motion.div
       variants={{
         hidden: { opacity: 0, y: 22 },
         show: { opacity: 1, y: 0, transition: { duration: reduce ? 0 : 0.34, ease: EASE } },
       }}
-      className={`sheet relative flex flex-col items-center gap-2.5 p-4 text-center ${height} ${order} ${
-        // first place carries the one permitted gradient on this screen
-        row.rank === 1 ? 'sheet-focal' : ''
-      } ${isYou ? 'ring-1 ring-inset ring-electric-500/40' : ''}`}
+      className={`flex min-w-0 flex-col items-center ${order}`}
     >
-      {row.rank === 1 && (
-        <span className="chip-xp absolute -top-2.5 left-1/2 -translate-x-1/2">Leader</span>
-      )}
-
+      <Monogram name={row.name} userId={row.id} hue={row.hue} size={row.rank === 1 ? 'xl' : 'lg'} />
+      <div className="mt-2 w-full min-w-0 text-center">
+        <div className="t3 truncate">{row.isYou ? 'You' : row.name}</div>
+        <div className="caption truncate">{row.college}</div>
+      </div>
       <div
-        className={`grid h-9 w-9 place-items-center rounded-full bg-gradient-to-b text-sm font-extrabold tabular-nums ${podiumClass(
-          row.rank,
-        )}`}
+        className={`mt-3 flex w-full flex-col items-center justify-start rounded-t-3xl bg-gradient-to-b pt-3 ring-1 ring-inset ${p.tile} ${p.ring} ${p.glow} ${p.block} ${
+          row.isYou ? 'outline outline-2 outline-offset-2 outline-electric-500' : ''
+        }`}
       >
-        {row.rank}
-      </div>
-
-      <Monogram name={row.name} userId={row.id} hue={row.hue} size="lg" />
-
-      <div className="min-w-0 max-w-full">
-        <div className="flex items-center justify-center gap-1.5">
-          <span className="t3 truncate">{isYou ? 'You' : row.name}</span>
-          {isYou && <span className="chip-electric shrink-0">YOU</span>}
-        </div>
-        <div className="caption mt-0.5 truncate">{row.college}</div>
-      </div>
-
-      <div className="mt-auto flex items-baseline gap-1 pt-1">
-        <span className="num-lg text-xp-300">{formatNumber(row.xp)}</span>
-        <span className="eyebrow">XP</span>
+        <span className="num-lg text-ink-900">{p.label}</span>
+        <span className="mt-1 text-caption font-bold tabular-nums text-ink-900">{formatNumber(row.xp)} XP</span>
       </div>
     </motion.div>
   )
@@ -93,31 +78,48 @@ function LeaderboardRow({ row, standalone = false, reduce }) {
       }}
       initial={standalone ? 'hidden' : undefined}
       animate={standalone ? 'show' : undefined}
-      className={`flex items-center gap-3 px-3 py-3 sm:px-4 ${
-        isYou ? 'border-l-[3px] border-l-electric-400 bg-electric-500/[0.12]' : 'border-l-[3px] border-l-transparent'
+      className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 sm:px-4 ${
+        isYou ? 'bg-electric-500/[0.12] shadow-[inset_0_0_0_1.5px_rgba(61,99,245,0.45)]' : ''
       }`}
     >
-      <span className={`num w-7 shrink-0 text-center ${row.rank === 1 ? 'text-fg' : 'text-fg-dim'}`}>
-        {row.rank}
-      </span>
-
-      <Monogram name={row.name} userId={row.id} hue={row.hue} size="sm" />
-
+      <span className="num w-7 shrink-0 text-center text-fg-dim">{row.rank}</span>
+      <Monogram name={row.name} userId={row.id} hue={row.hue} size="md" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className={`t3 truncate ${isYou ? 'text-white' : ''}`}>
-            {isYou ? 'You' : row.name}
-          </span>
+          <span className="t3 truncate">{isYou ? 'You' : row.name}</span>
           {isYou && <span className="chip-electric shrink-0">YOU</span>}
         </div>
         <div className="caption truncate">{row.college}</div>
       </div>
-
       <div className="shrink-0 text-right">
-        <div className={`num ${isYou ? 'text-xp-300' : ''}`}>{formatNumber(row.xp)}</div>
-        <div className="eyebrow">XP</div>
+        <span className={`num ${isYou ? 'text-xp-300' : ''}`}>{formatNumber(row.xp)}</span>{' '}
+        <span className="eyebrow">XP</span>
       </div>
     </motion.div>
+  )
+}
+
+/** Segmented control: three equal pills, active one raised. */
+function Segmented({ tabs, value, onChange }) {
+  return (
+    <div role="tablist" aria-label="Leaderboard scope" className="inline-flex w-full rounded-2xl bg-electric-500/[0.08] p-1 sm:w-auto">
+      {tabs.map((t) => {
+        const on = t.key === value
+        return (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={on}
+            onClick={() => onChange(t.key)}
+            className={`min-h-[44px] flex-1 whitespace-nowrap rounded-xl px-4 font-sans text-body font-semibold transition-all duration-200 sm:flex-none sm:px-6 ${
+              on ? 'bg-pure text-electric-300 shadow-sheet' : 'text-fg-dim hover:text-fg'
+            }`}
+          >
+            {t.label}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -164,20 +166,34 @@ export default function Leaderboard() {
       initial={reduce ? false : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduce ? 0 : 0.3, ease: EASE }}
-      className="space-y-6"
+      className="space-y-12"
     >
-      <SectionHeading
-        eyebrow="This week"
-        title="Leaderboard"
-        sub="The other learners are seeded demo learners. Your row is your real progress on this device."
-        action={<Pill tone="xp">{formatNumber(level.xp)} XP · Level {levelNumber(level.level)}</Pill>}
-      />
-
-      {/* tabs ---------------------------------------------------------- */}
-      <div className="space-y-1.5">
-        <Tabs tabs={TABS} value={tab} onChange={setTab} />
-        <p className="caption px-1">{tabHint} · {board.total} learners on this board</p>
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="eyebrow mb-2">Leaderboard</div>
+          <h1 className="t1">Who is on top</h1>
+          <p className="copy mt-1">{tabHint} · {board.total} learners on this board</p>
+        </div>
+        <Segmented tabs={TABS} value={tab} onChange={setTab} />
       </div>
+
+      {/* podium -------------------------------------------------------- */}
+      <section aria-label="Top three">
+        <motion.div
+          key={tab}
+          initial="hidden"
+          animate="show"
+          variants={{
+            hidden: {},
+            show: { transition: { staggerChildren: reduce ? 0 : 0.08, delayChildren: 0.04 } },
+          }}
+          className="mx-auto grid max-w-[640px] grid-cols-3 items-end gap-2 sm:gap-4"
+        >
+          {top.map((row) => (
+            <PodiumStep key={row.id} row={row} reduce={reduce} />
+          ))}
+        </motion.div>
+      </section>
 
       {/* your position — the focal surface */}
       <motion.section
@@ -185,11 +201,11 @@ export default function Leaderboard() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: reduce ? 0 : 0.34, ease: EASE }}
       >
-        <Panel className="p-4 sm:p-5">
-          <div className="flex items-center gap-4 sm:gap-6">
+        <Panel className="sheet-focal p-5 sm:p-7">
+          <div className="flex items-center gap-5 sm:gap-8">
             <div className="shrink-0 text-center">
-              <div className="eyebrow mb-1">Your position</div>
-              <div className="relative h-[38px] w-[84px] sm:h-[42px] sm:w-[104px]">
+              <div className="eyebrow mb-1">Your rank</div>
+              <div className="relative h-[60px] w-[84px]">
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
                     key={you?.rank ?? 0}
@@ -197,7 +213,7 @@ export default function Leaderboard() {
                     animate={{ y: 0, opacity: 1 }}
                     exit={reduce ? undefined : { y: 14, opacity: 0 }}
                     transition={{ duration: reduce ? 0 : 0.24, ease: EASE }}
-                    className="num-lg"
+                    className="num-xl"
                   >
                     {you?.rank ?? '—'}
                   </motion.div>
@@ -210,12 +226,10 @@ export default function Leaderboard() {
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 <span className="num-lg text-xp-300">{formatNumber(level.xp)}</span>
                 <span className="eyebrow">XP</span>
-                <span className="chip-xp">Level {levelNumber(level.level)} · {level.name}</span>
+                <Pill tone="xp">Level {levelNumber(level.level)} · {level.name}</Pill>
               </div>
-
               <p className="t3 mt-2">{deltaPrimary}</p>
               <p className="copy mt-0.5">{deltaSecondary}</p>
-
               {level.next ? (
                 <div className="mt-3">
                   <div className="mb-1.5 flex items-center justify-between gap-2">
@@ -227,50 +241,14 @@ export default function Leaderboard() {
                   <ProgressBar value={level.into} max={level.span} size="sm" variant="xp" />
                 </div>
               ) : (
-                <p className="caption mt-3">
-                  Top level reached — Legal Master. Nothing above you on the ladder.
-                </p>
+                <p className="caption mt-3">Top level reached — Legal Master.</p>
               )}
             </div>
           </div>
         </Panel>
       </motion.section>
 
-      {/* the supporting figures — unboxed, on the canvas */}
-      <StatStrip
-        items={[
-          { label: 'Total XP', value: formatNumber(level.xp), tone: 'xp' },
-          { label: 'Level', value: levelNumber(level.level), suffix: ` · ${level.name}` },
-          // Was labelled "Ahead of you" while carrying `belowCount` — the learners
-          // BEHIND you. It contradicted the hero line 300px above it, which
-          // correctly reads "You are ahead of 9 learners".
-          { label: 'Behind you', value: formatNumber(belowCount) },
-          {
-            label: level.isMax ? 'To next level' : 'XP to next level',
-            value: formatNumber(level.toNext),
-          },
-        ]}
-      />
-
-      {/* podium -------------------------------------------------------- */}
-      <section>
-        <SectionHeading eyebrow="Top of the board" title="Podium" sub="Ranked by XP on this board." />
-        <motion.div
-          initial="hidden"
-          animate="show"
-          variants={{
-            hidden: {},
-            show: { transition: { staggerChildren: reduce ? 0 : 0.08, delayChildren: 0.04 } },
-          }}
-          className="flex flex-col gap-3 sm:grid sm:grid-cols-3 sm:items-end"
-        >
-          {top.map((row) => (
-            <PodiumCard key={row.id} row={row} reduce={reduce} />
-          ))}
-        </motion.div>
-      </section>
-
-      {/* full list — flat, no container ---------------------------------- */}
+      {/* full list ------------------------------------------------------ */}
       <section>
         <SectionHeading
           eyebrow="Full ranking"
@@ -278,14 +256,11 @@ export default function Leaderboard() {
           sub={you && you.rank > 10 ? 'Your row is pinned at the bottom so you can always find it.' : undefined}
         />
         <motion.div
-          variants={{
-            hidden: {},
-            show: { transition: { staggerChildren: reduce ? 0 : 0.04 } },
-          }}
+          variants={{ hidden: {}, show: { transition: { staggerChildren: reduce ? 0 : 0.04 } } }}
           initial="hidden"
           whileInView="show"
           viewport={{ once: true, amount: 0.08 }}
-          className="divide-y divide-white/[0.05]"
+          className="space-y-0.5"
         >
           {rows.map((row) => (
             <LeaderboardRow key={row.id} row={row} reduce={reduce} />
@@ -293,55 +268,47 @@ export default function Leaderboard() {
         </motion.div>
 
         {you && you.rank > 10 && (
-          <div className="sticky bottom-[76px] z-10 mt-2 sm:bottom-3">
-            <div className="sheet overflow-hidden rounded-2xl">
-              <div className="flex items-center justify-between gap-2 px-3 pt-2.5 sm:px-4">
-                <span className="eyebrow text-electric-300">Your position</span>
-                <span className="caption">Pinned — you are outside the top 10</span>
-              </div>
+          <div className="sticky bottom-[76px] z-10 mt-3 sm:bottom-3">
+            <div className="sheet overflow-hidden rounded-2xl p-1">
               <LeaderboardRow row={you} standalone reduce={reduce} />
             </div>
           </div>
         )}
+
+        <p className="copy measure mt-6 flex items-start gap-2.5">
+          <Info size={16} className="mt-1 shrink-0 text-fg-dim" strokeWidth={2.2} />
+          <span>
+            The other learners here are sample data, not real people. Your row is your real progress on this
+            device. <span className="font-semibold text-fg-muted">My College</span> filters to your institution.
+          </span>
+        </p>
       </section>
 
-      {/* honest note --------------------------------------------------- */}
-      <p className="copy measure">
-        Seeded learners are demo data. Your row is your real progress on this device. The{' '}
-        <span className="font-semibold text-fg-muted">My College</span> tab filters to your own
-        institution, and <span className="font-semibold text-fg-muted">All India</span> shows every
-        learner on LawLink.
-      </p>
-
       {/* xp rules ------------------------------------------------------ */}
-      <Card className="p-4 sm:p-5">
+      <Card className="p-5 sm:p-6">
         <div className="eyebrow mb-2">How to earn XP</div>
-        <h3 className="t3">Every point in LawLink</h3>
-        <p className="copy measure mt-1">
-          XP is awarded automatically the moment you finish something. Nothing here is random.
-        </p>
+        <h3 className="t2">Every point in LawLink</h3>
+        <p className="copy measure mt-1">XP lands the moment you finish something. Nothing is random.</p>
 
-        <ul className="mt-4 divide-y divide-white/[0.05]">
+        <ul className="mt-4 divide-y divide-white/[0.07]">
           {XP_SOURCES.map((src) => (
             <li key={src.key} className="flex items-center justify-between gap-3 py-2.5">
               <div className="min-w-0">
                 <div className="t3 truncate text-fg-muted">{src.label}</div>
                 <div className="caption truncate">{src.note}</div>
               </div>
-              <div className="num shrink-0 text-xp-300">+{formatNumber(XP_RULES[src.key])}</div>
+              <span className="chip-xp shrink-0">+{formatNumber(XP_RULES[src.key])}</span>
             </li>
           ))}
         </ul>
 
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+        <div className="mt-5 flex flex-wrap items-center gap-3">
           <Button as={Link} to="/journey" size="sm" iconRight={ArrowRight}>
             Earn XP now
           </Button>
           <Button as={Link} to="/achievements" variant="ghost" size="sm">
             See your badges
           </Button>
-          <span className="caption">Level names come from the same XP table</span>
-          <span className="caption">Your rank updates the moment you earn XP</span>
         </div>
       </Card>
     </motion.div>

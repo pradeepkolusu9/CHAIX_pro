@@ -80,7 +80,7 @@ export function MobileMenu({ open, onClose }) {
           transition={{ duration: 0.18 }}
           className="fixed inset-0 z-[60] lg:hidden"
         >
-          <div className="absolute inset-0 bg-surface-0/80" onClick={onClose} />
+          <div className="absolute inset-0 bg-ink-950/40" onClick={onClose} />
           <motion.aside
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}

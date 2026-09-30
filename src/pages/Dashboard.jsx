@@ -1,34 +1,22 @@
-﻿import { useMemo } from 'react'
+import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import {
-  Flame,
-  Zap,
-  Trophy,
-  Timer,
-  Play,
-  ArrowRight,
-  Lock,
-  Bot,
-  Check,
-  Siren,
-} from 'lucide-react'
-import {
-  CardHead,
-  ProgressBar,
-  StatStrip,
-  LevelSeal,
-  Pill,
-  Button,
-  Figure,
-  formatNumber,
-} from '../components/ui/index.jsx'
+import { Flame, Zap, Trophy, Timer, Play, ArrowRight, Lock, Check, Siren, Bot, Search, LifeBuoy } from 'lucide-react'
+import { Pill, Button, IconBadge, Sigil, formatNumber } from '../components/ui/index.jsx'
 import { useStore } from '../lib/store.jsx'
 import { MODULES } from '../data/modules.js'
 import { levelNumber, XP_RULES } from '../lib/gamification.js'
 import { dailyChallenge, dailyTitle } from '../data/challenges.js'
 import { buildBoard } from '../data/leaderboard.js'
 import { todayKey } from '../lib/dates.js'
+import { toneFor } from '../lib/moduleTone.js'
+
+const EASE = [0.16, 1, 0.3, 1]
+const rise = (delay = 0) => ({
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.35, ease: EASE, delay },
+})
 
 const greet = () => {
   const h = new Date().getHours()
@@ -38,69 +26,52 @@ const greet = () => {
   return 'Good evening'
 }
 
-/** One rail row. Hairline-separated, never boxed. */
-function RailRow({ icon: Icon, label, sub, right, to }) {
-  const nav = useNavigate()
-  const body = (
-    <div className="flex items-center gap-4 py-3.5">
-      <span className="flex shrink-0 items-center gap-2.5">
-        <Icon size={15} className="text-fg-dim" strokeWidth={2.2} />
-        <span className="t3">{label}</span>
-      </span>
-      <span className="min-w-0 flex-1 truncate copy">{sub}</span>
-      {right}
-    </div>
-  )
-  if (!to) return body
+/** SVG progress ring. Static track + arc; children render in the centre. */
+function Ring({ pct, size = 96, stroke = 9, color = '#3d63f5', children }) {
+  const r = (size - stroke) / 2
+  const c = 2 * Math.PI * r
   return (
-    <button
-      onClick={() => nav(to)}
-      className="block w-full text-left transition-opacity hover:opacity-80"
-    >
-      {body}
-    </button>
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(61,99,245,0.12)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - Math.max(0, Math.min(100, pct)) / 100)}
+        />
+      </svg>
+      <div className="absolute inset-0 grid place-items-center">{children}</div>
+    </div>
   )
 }
 
-/** 8-pip quest track. Shape encodes state, not colour alone. */
-function QuestTrack({ stats, unlocked }) {
-  const idx = MODULES.findIndex((m) => stats[m.id] && stats[m.id].pct > 0 && stats[m.id].pct < 100)
-  const current = idx === -1 ? MODULES.findIndex((m) => unlocked[m.id] !== false) : idx
-  const nextLocked = MODULES.find((m) => unlocked[m.id] === false)
-  const done = current === -1 ? MODULES.length : current
-
+/** Large clickable "what next" card. */
+function ActionTile({ to, icon, tone, title, sub, chip }) {
   return (
-    <div>
-      <div className="grid grid-cols-8 gap-1.5" role="img" aria-label={`Mission ${done + 1} of ${MODULES.length}`}>
-        {MODULES.map((m, i) => {
-          const s = stats[m.id] || {}
-          const state = s.completed ? 'done' : i === current ? 'current' : 'locked'
-          return (
-            <span
-              key={m.id}
-              title={m.name}
-              data-s={state}
-              className={`h-1.5 rounded-full ${
-                state === 'done'
-                  ? 'bg-good/70'
-                  : state === 'current'
-                    ? 'bg-electric-400'
-                    : 'bg-white/[0.08]'
-              }`}
-            />
-          )
-        })}
+    <Link to={to} className="pressable group flex flex-col gap-4 p-5" style={{ borderRadius: 24 }}>
+      <div className="flex items-start justify-between gap-3">
+        <IconBadge icon={icon} tone={tone} size="lg" />
+        {chip}
       </div>
-      <p className="caption mt-2">
-        Mission {String(Math.min(done + 1, MODULES.length)).padStart(2, '0')} of {String(MODULES.length).padStart(2, '0')}
-        {nextLocked && ` · ${nextLocked.name} unlocks next`}
-      </p>
-    </div>
+      <div className="min-w-0">
+        <div className="t2">{title}</div>
+        <p className="copy mt-1 line-clamp-2">{sub}</p>
+      </div>
+      <span className="mt-auto flex items-center gap-1.5 text-caption font-semibold text-electric-300">
+        Go <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+      </span>
+    </Link>
   )
 }
 
 export default function Dashboard() {
-  const { profile, impact, level, streak, stats, unlocked, daily, quizHistory } = useStore()
+  const { profile, level, streak, stats, unlocked, daily, quizHistory, week } = useStore()
   const nav = useNavigate()
 
   /** The current mission: the partially-done module, else the next open one. */
@@ -110,264 +81,228 @@ export default function Dashboard() {
     return MODULES.find((m) => unlocked[m.id] !== false) || MODULES[0]
   }, [stats, unlocked])
 
-  /** The next scenario in that mission — the one thing we want the user to play. */
   const scenario = useMemo(() => {
     const s = stats[mission.id] || {}
     return mission.scenarios.find((x) => !s.scenarioIds?.includes(x.id)) || mission.scenarios[0]
   }, [mission, stats])
 
   const missionStat = stats[mission.id] || {}
+  const missionPct = missionStat.pct || 0
   const board = buildBoard('weekly', { xp: level.xp, college: profile?.college, name: profile?.name })
   const me = board.you
   const ahead = board.rows.filter((r) => !r.isYou && r.rank < (me?.rank || 99))
   const gap = ahead.length ? me.xp - ahead[ahead.length - 1].xp : 0
   const dc = dailyChallenge()
   const dailyDone = daily?.lastDone === todayKey()
-  const bestQuiz = quizHistory.reduce(
-    (a, q) => (q.total ? Math.max(a, Math.round((q.score / q.total) * 100)) : a),
-    0,
-  )
+  const bestQuiz = quizHistory.reduce((a, q) => (q.total ? Math.max(a, Math.round((q.score / q.total) * 100)) : a), 0)
+  const levelPct = level.isMax ? 100 : Math.round(((level.into || 0) / (level.span || 1)) * 100)
+  const streakNow = streak?.current || 0
+  const daysDone = (week || []).filter((d) => d.done).length
 
   return (
-    <div className="mx-auto max-w-[1180px] space-y-8 pb-4">
-      {/* ---------------------------------------------------- masthead */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className="flex flex-wrap items-end justify-between gap-4"
-      >
-        <div className="min-w-0">
-          <h1 className="t1">
-            {greet()}, {profile?.name?.split(' ')[0] || 'Learner'}.
-          </h1>
-          <p className="copy mt-1.5">
-            {impact.scenariosDone < 40
-              ? `${40 - impact.scenariosDone} scenarios left in the journey.`
-              : 'Journey complete — go for a perfect score.'}
-          </p>
-        </div>
-        <LevelSeal
-          number={levelNumber(level.level)}
-          name={level.name}
-          sub={`${formatNumber(level.xp)} XP`}
-        />
+    <div className="mx-auto max-w-[1180px] space-y-14 pb-6">
+      {/* greeting */}
+      <motion.div {...rise(0)}>
+        <h1 className="t1">
+          {greet()}, {profile?.name?.split(' ')[0] || 'Learner'}.
+        </h1>
+        <p className="copy mt-1.5">
+          {streakNow > 0 ? `${streakNow}-day streak going. Keep it warm.` : 'One scenario today starts your streak.'}
+        </p>
       </motion.div>
 
-      {/* --------------------------------------- hero: the scene, not a scoreboard */}
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-      >
-        <div className="sheet-lg sheet-focal p-6 sm:p-7">
-          <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
-            {/* left — the scene. This is the focal point of the whole app. */}
-            <div className="min-w-0">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="eyebrow text-electric-300">
-                  {mission.name} · Scenario {Math.min((missionStat.scenariosDone || 0) + 1, mission.scenarios.length)} of{' '}
-                  {mission.scenarios.length}
-                </span>
-                <Pill tone="xp">+{XP_RULES.scenario} XP</Pill>
+      {/* hero 8/4 */}
+      <motion.div {...rise(0.05)} className="grid gap-6 lg:grid-cols-12">
+        <div className="sheet-lg sheet-focal p-6 sm:p-8 lg:col-span-8">
+          <div className="flex flex-col-reverse gap-6 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="eyebrow mb-3">
+                Continue · {mission.name} · Scenario {Math.min((missionStat.scenariosDone || 0) + 1, mission.scenarios.length)} of{' '}
+                {mission.scenarios.length}
               </div>
-
               <h2 className="case-title">{scenario.title}</h2>
-
-              <p className="lead measure mt-3">{scenario.situation}</p>
-
+              <p className="lead measure mt-3 line-clamp-3">{scenario.situation}</p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Pill tone="xp">+{XP_RULES.scenario} XP</Pill>
                 <Pill>{mission.difficulty}</Pill>
                 <Pill>~{mission.minutes} min</Pill>
-                <Pill>
-                  {missionStat.pct || 0}% of {mission.name}
-                </Pill>
               </div>
-
               {/* The ONE primary button on this screen. */}
               <Button
                 variant="primary"
                 size="lg"
-                className="mt-6"
+                className="mt-7"
                 onClick={() => nav(`/lesson/${mission.id}?tab=scenario`)}
                 icon={Play}
                 iconRight={ArrowRight}
               >
-                {missionStat.pct > 0 ? 'Resume scenario' : 'Start scenario'}
+                {missionPct > 0 ? 'Resume scenario' : 'Start scenario'}
               </Button>
             </div>
+            <Ring pct={missionPct} size={104}>
+              <div className="text-center">
+                <div className="num-lg leading-none">{missionPct}%</div>
+                <div className="caption mt-0.5">{mission.name.length > 12 ? 'module' : mission.name}</div>
+              </div>
+            </Ring>
+          </div>
+        </div>
 
-            {/* right — borderless reference column, not a card in a card.
-                Deliberately `num-lg`, not `num-xl`: the hero's job is to make the
-                user press Resume, and a 56px gold figure out-scaled the only
-                primary button on the screen. The dashboard's one `num-xl` budget
-                is spent on nothing here on purpose. */}
-            <div className="lg:border-l lg:border-white/[0.06] lg:pl-8">
-              <div className="eyebrow mb-2">Total XP</div>
-              <div className="flex items-baseline gap-2">
-                <Figure value={level.xp} size="lg" tone="xp" />
-                <span className="caption">
-                  {level.isMax ? 'max' : `${formatNumber(level.toNext)} to L${levelNumber(level.level + 1)}`}
-                </span>
-              </div>
-              {/* The bar measures progress to the NEXT LEVEL, so the percentage
-                  must be of that same span. `level.pct` is in-level progress
-                  (350/500), which put "70%" next to a total that was really
-                  92.5% of the way to Level 5 — the flagship screen answering
-                  "how far to the next unlock" incorrectly. */}
-              <ProgressBar
-                value={level.isMax ? 100 : level.into}
-                max={level.isMax ? 1 : level.span || 1}
-                variant="xp"
-                className="mt-3"
-              />
-              <div className="mt-1.5 flex justify-between">
-                <span className="eyebrow">
-                  {formatNumber(level.into)}
-                  {level.isMax ? '' : ` / ${formatNumber(level.span)} to next`}
-                </span>
-                <span className="caption">
-                  {level.isMax
-                    ? 'Maximum level'
-                    : `Level ${levelNumber(level.level + 1)} at ${formatNumber(level.next?.min || 0)}`}
-                </span>
-              </div>
-
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <Pill tone="warn" icon={Flame}>
-                  {streak?.current || 0} day streak
-                </Pill>
-                <Pill>{streak?.longest || 0} day best</Pill>
-              </div>
-
-              <div className="mt-5">
-                <QuestTrack stats={stats} unlocked={unlocked} />
-              </div>
+        {/* level card */}
+        <div className="sheet-lg flex flex-col justify-between gap-6 p-6 lg:col-span-4">
+          <div className="flex items-center gap-4">
+            <div className="tile tile-violet h-16 w-16 rounded-2xl">
+              <span className="num-lg text-violet2-300">{levelNumber(level.level)}</span>
             </div>
+            <div className="min-w-0">
+              <div className="eyebrow">Your level</div>
+              <div className="t2 leading-tight">{level.name}</div>
+            </div>
+          </div>
+          <div>
+            <div className="flex items-end justify-between">
+              <span className="num-lg text-xp-300">
+                {formatNumber(level.xp)} <span className="caption">XP</span>
+              </span>
+              <span className="caption tnum">
+                {level.isMax ? 'Max level' : `${formatNumber(level.toNext)} to L${levelNumber(level.level + 1)}`}
+              </span>
+            </div>
+            <div className="track mt-3" role="progressbar" aria-valuenow={levelPct} aria-valuemin={0} aria-valuemax={100}>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${levelPct}%` }}
+                transition={{ duration: 0.7, delay: 0.2, ease: EASE }}
+                className="track-fill-xp"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Pill tone="warn" icon={Flame}>
+              {streakNow} day streak
+            </Pill>
+            <Pill>{streak?.longest || 0} day best</Pill>
           </div>
         </div>
       </motion.div>
 
-      {/* ------------------------------------------------- unboxed stat strip */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.1 }}
-      >
-        <StatStrip
-          items={[
-            { label: 'Lessons', value: impact.lessonsCompleted },
-            { label: 'Quiz accuracy', value: impact.quizAccuracy, suffix: '%', tone: impact.quizAccuracy >= 80 ? 'good' : undefined },
-            { label: 'Modules', value: impact.modulesDone, suffix: `/${impact.modulesTotal}` },
-            { label: 'Day streak', value: streak?.current || 0, tone: (streak?.current || 0) >= 7 ? 'good' : undefined },
-            { label: 'Badges', value: impact.badges, tone: 'xp' },
-          ]}
-        />
-      </motion.div>
+      {/* week strip + what next */}
+      <motion.section {...rise(0.1)} className="space-y-6">
+        <div className="sheet flex flex-wrap items-center justify-between gap-x-8 gap-y-4 px-5 py-4 sm:px-6">
+          <div>
+            <div className="eyebrow">This week</div>
+            <div className="caption tnum mt-1">
+              {daysDone} of {(week || []).length || 7} days
+            </div>
+          </div>
+          <ul className="flex flex-1 justify-between gap-1 sm:max-w-md sm:justify-end sm:gap-4">
+            {(week || []).map((d) => (
+              <li key={d.date} className="flex flex-col items-center gap-1.5" title={d.date}>
+                <span
+                  className={`grid h-9 w-9 place-items-center rounded-full ${
+                    d.done ? 'tile tile-warn' : d.future ? 'bg-white/[0.05]' : 'bg-white/[0.12]'
+                  }`}
+                >
+                  {d.done && <Flame size={16} strokeWidth={2.2} />}
+                </span>
+                <span className="text-micro font-semibold text-fg-dim">{d.label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
-      {/* ------------------------------------------------------------- rail */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.15 }}
-      >
-        <CardHead eyebrow="What next" title="Three ways to play today" />
-        <div className="divide-y divide-white/[0.05]">
-          <RailRow
-            icon={Zap}
-            label="Daily challenge"
-            sub={dailyDone ? 'Cleared today — play another for practice' : dailyTitle(dc)}
+        <div className="grid gap-4 md:grid-cols-3">
+          <ActionTile
             to="/daily"
-            right={
-              <span className="flex shrink-0 items-center gap-3">
-                <Pill tone="xp">+{XP_RULES.dailyChallenge} XP</Pill>
-                <ArrowRight size={14} className="text-fg-faint" />
-              </span>
-            }
+            icon={Zap}
+            tone="xp"
+            title="Daily challenge"
+            sub={dailyDone ? 'Cleared today. Play another for practice.' : dailyTitle(dc)}
+            chip={<Pill tone="xp">+{XP_RULES.dailyChallenge} XP</Pill>}
           />
-          <RailRow
+          <ActionTile
+            to="/speed"
+            icon={Timer}
+            tone="electric"
+            title="60-second run"
+            sub={bestQuiz ? `Best quiz ${bestQuiz}%. 8 questions, 60 seconds.` : '8 questions, 60 seconds.'}
+            chip={<Pill tone="electric">Fast</Pill>}
+          />
+          <ActionTile
+            to="/leaderboard"
             icon={Trophy}
-            label="Your rank"
+            tone="violet"
+            title="Your rank"
             sub={
               me
-                ? `#${me.rank} of ${board.total}${ahead.length ? ` · ${formatNumber(Math.abs(gap))} XP behind ${ahead[ahead.length - 1].name}` : ' · leading the board'}`
-                : '—'
+                ? `#${me.rank} of ${board.total}${ahead.length ? `, ${formatNumber(Math.abs(gap))} XP behind ${ahead[ahead.length - 1].name}` : ', leading the board'}`
+                : 'See the board.'
             }
-            to="/leaderboard"
-            right={<ArrowRight size={14} className="shrink-0 text-fg-faint" />}
-          />
-          <RailRow
-            icon={Timer}
-            label="60-second run"
-            sub={bestQuiz ? `Best quiz ${bestQuiz}% · 8 questions, 60 seconds` : '8 questions · 60 seconds'}
-            to="/speed"
-            right={<ArrowRight size={14} className="shrink-0 text-fg-faint" />}
+            chip={me ? <Pill>#{me.rank}</Pill> : null}
           />
         </div>
-      </motion.div>
+      </motion.section>
 
-      {/* ------------------------------------------- next mission, flat list */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
-      >
-        <CardHead
-          eyebrow="Legal journey"
-          title="Unlock the next mission"
-          action={
-            <Link to="/journey" className="text-caption font-semibold text-electric-300 hover:underline">
-              Open the map →
-            </Link>
-          }
-        />
-        <ul className="divide-y divide-white/[0.05]">
-          {MODULES.map((m) => {
+      {/* journey rail */}
+      <motion.section {...rise(0.15)}>
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <div className="eyebrow mb-2">Legal journey</div>
+            <h2 className="t1">Eight modules, one at a time</h2>
+          </div>
+          <Link to="/journey" className="shrink-0 text-caption font-semibold text-electric-300 hover:underline">
+            Open the map
+          </Link>
+        </div>
+        <ol className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-8 sm:overflow-visible sm:px-0">
+          {MODULES.map((m, i) => {
             const s = stats[m.id] || {}
-            const isOpen = unlocked[m.id] !== false
-            const isNext = m.id === mission.id
+            const open = unlocked[m.id] !== false
+            const isNow = m.id === mission.id
             return (
-              <li key={m.id}>
+              <li key={m.id} className="w-[92px] shrink-0 sm:w-auto">
                 <Link
-                  to={isOpen ? `/lesson/${m.id}` : '/journey'}
-                  className="flex items-center gap-3 py-3 transition-opacity hover:opacity-75"
+                  to={open ? `/lesson/${m.id}` : '/journey'}
+                  className={`flex flex-col items-center gap-2.5 rounded-2xl px-2 py-3 text-center transition-colors hover:bg-electric-500/5 ${
+                    isNow ? 'bg-electric-500/[0.07]' : ''
+                  }`}
+                  aria-label={`${m.name}: ${s.completed ? 'complete' : open ? `${s.pct || 0}%` : 'locked'}`}
                 >
-                  {s.completed ? (
-                    <Check size={15} className="shrink-0 text-good" strokeWidth={3} />
-                  ) : isOpen ? (
-                    <Play size={15} className={`shrink-0 ${isNext ? 'text-electric-300' : 'text-fg-dim'}`} strokeWidth={2.4} />
-                  ) : (
-                    <Lock size={14} className="shrink-0 text-fg-faint" />
-                  )}
-                  <span className={`t3 min-w-0 flex-1 truncate ${isOpen ? '' : 'text-fg-dim'}`}>{m.name}</span>
-                  {isNext && <Pill tone="electric">Next</Pill>}
-                  <span className="num shrink-0 text-fg-dim">{s.pct || 0}%</span>
+                  <span className="relative">
+                    <span className={`tile ${open ? `tile-${toneFor(m.id)}` : 'tile-muted'} h-14 w-14 rounded-2xl`}>
+                      {open ? <Sigil id={m.id} size={26} /> : <Lock size={20} strokeWidth={2.2} />}
+                    </span>
+                    {s.completed && (
+                      <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-good text-pure ring-2 ring-surface-0">
+                        <Check size={12} strokeWidth={3.4} />
+                      </span>
+                    )}
+                  </span>
+                  <span className="t3 line-clamp-2 text-caption leading-tight">{m.name}</span>
+                  <span className={`caption tnum ${open ? '' : 'text-fg-faint'}`}>
+                    {String(i + 1).padStart(2, '0')} · {open ? `${s.pct || 0}%` : 'locked'}
+                  </span>
                 </Link>
               </li>
             )
           })}
-        </ul>
-      </motion.div>
+        </ol>
+      </motion.section>
 
-      {/* ------------------------------------------------- quick help, one row */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.25 }}
-        className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1"
-      >
-        <span className="flex items-center gap-2">
-          <Siren size={14} className="text-danger" strokeWidth={2.3} />
-          <Link to="/emergency" className="text-caption font-semibold text-fg-muted hover:text-fg">
-            In danger? call <span className="text-danger">112</span>
+      {/* quick help band */}
+      <motion.div {...rise(0.2)} className="inset flex flex-wrap items-center gap-x-6 gap-y-3 px-5 py-3.5">
+        <span className="eyebrow">Quick help</span>
+        {[
+          { to: '/emergency', icon: Siren, tone: 'danger', label: 'Emergency 112' },
+          { to: '/emergency#legal-aid', icon: LifeBuoy, tone: 'good', label: 'Legal aid' },
+          { to: '/search', icon: Search, tone: 'electric', label: 'Search' },
+          { to: '/ai', icon: Bot, tone: 'violet', label: 'Ask AI' },
+        ].map((q) => (
+          <Link key={q.label} to={q.to} className="flex min-h-[44px] items-center gap-2 text-caption font-semibold text-fg-muted hover:text-fg">
+            <IconBadge icon={q.icon} tone={q.tone} size="xs" />
+            {q.label}
           </Link>
-        </span>
-        <span className="flex items-center gap-2">
-          <Bot size={14} className="text-fg-dim" strokeWidth={2.2} />
-          <Link to="/ai" className="text-caption font-semibold text-fg-muted hover:text-fg">
-            Not sure it applies? Ask LawLink AI
-          </Link>
-        </span>
+        ))}
       </motion.div>
     </div>
   )

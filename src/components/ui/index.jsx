@@ -229,7 +229,7 @@ export const Modal = forwardRef(function Modal(
           role="dialog"
           aria-modal="true"
         >
-          <div className="absolute inset-0 bg-surface-0/88" onClick={dismissible ? onClose : undefined} />
+          <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-sm" onClick={dismissible ? onClose : undefined} />
           <motion.div
             initial={{ opacity: 0, y: 18, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -268,13 +268,13 @@ export function Tabs({ tabs, value, onChange, className = '' }) {
             key={t.key}
             onClick={() => onChange(t.key)}
             className={`relative shrink-0 whitespace-nowrap rounded-xl px-3.5 py-2 font-sans text-body font-semibold transition-colors duration-200 ${
-              active ? 'text-white' : 'text-fg-dim hover:bg-white/[0.05] hover:text-fg'
+              active ? 'text-electric-300' : 'text-fg-dim hover:bg-white/[0.05] hover:text-fg'
             }`}
           >
             {active && (
               <motion.span
                 layoutId={`tab-${tabs.map((x) => x.key).join('')}`}
-                className="absolute inset-0 rounded-xl bg-white/[0.06] shadow-[inset_0_1px_0_0_rgba(255,255,255,0.09)]"
+                className="absolute inset-0 rounded-xl bg-electric-500/10"
                 transition={{ type: 'spring', stiffness: 380, damping: 32 }}
               />
             )}
@@ -402,8 +402,8 @@ export function EmptyState({ icon: Icon, title, body, action, className = '' }) 
   return (
     <div className={`flex flex-col items-center justify-center px-6 py-14 text-center ${className}`}>
       {Icon && (
-        <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-white/[0.04]">
-          <Icon size={22} className="text-fg-faint" strokeWidth={1.8} />
+        <div className="tile tile-electric mb-4 h-16 w-16 rounded-3xl">
+          <Icon size={26} strokeWidth={1.9} />
         </div>
       )}
       <h3 className="t2">{title}</h3>
@@ -421,27 +421,16 @@ export function EmptyState({ icon: Icon, title, body, action, className = '' }) 
  * ~80ms. A single non-looping fade reads as a scene change instead.
  */
 export const Skeleton = ({ className = '' }) => (
-  <div className={`rounded-xl bg-white/[0.05] motion-safe:animate-[fadeIn_.2s_ease-out] ${className}`} />
+  <div className={`rounded-xl bg-white/[0.07] motion-safe:animate-[fadeIn_.2s_ease-out] ${className}`} />
 )
 
 /* ------------------------------------------------------------- IconBadge */
 export function IconBadge({ icon: Icon, tone = 'electric', size = 'md', className = '' }) {
-  const tones = {
-    electric: 'bg-electric-500/[0.10] text-electric-300 ring-1 ring-inset ring-electric-500/20',
-    violet: 'bg-violet2-500/[0.10] text-violet2-300 ring-1 ring-inset ring-violet2-500/20',
-    xp: 'bg-xp-400/[0.10] text-xp-300 ring-1 ring-inset ring-xp-400/20',
-    good: 'bg-good/[0.10] text-good ring-1 ring-inset ring-good/20',
-    danger: 'bg-danger/[0.10] text-danger ring-1 ring-inset ring-danger/20',
-    warn: 'bg-warn/[0.10] text-warn ring-1 ring-inset ring-warn/20',
-    muted: 'bg-white/[0.05] text-fg-muted',
-  }
-  const sizes = { xs: 'h-7 w-7 rounded-lg', sm: 'h-8 w-8 rounded-lg', md: 'h-10 w-10 rounded-xl', lg: 'h-14 w-14 rounded-2xl' }
-  const isizes = { xs: 14, sm: 15, md: 18, lg: 24 }
+  const sizes = { xs: 'h-7 w-7 rounded-lg', sm: 'h-8 w-8 rounded-[10px]', md: 'h-10 w-10 rounded-xl', lg: 'h-14 w-14 rounded-2xl' }
+  const isizes = { xs: 14, sm: 16, md: 19, lg: 26 }
   return (
-    <div
-      className={`grid shrink-0 place-items-center ${tones[tone]} ${sizes[size]} ${className}`}
-    >
-      <Icon size={isizes[size]} strokeWidth={2.1} />
+    <div className={`tile tile-${tone} ${sizes[size]} ${className}`}>
+      <Icon size={isizes[size]} strokeWidth={2} />
     </div>
   )
 }

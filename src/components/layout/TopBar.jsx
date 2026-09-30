@@ -86,9 +86,9 @@ export function GlobalSearch({ autoFocus = false, onNavigate, className = '' }) 
               nav(results[0].href || `/learn?focus=${results[0].moduleId}`)
             }
           }}
-          placeholder="Search cyber fraud, refund, drunk driving…"
+          placeholder="Search scams, refunds, rights…"
           /* a genuine input, so the one legal ring in the chrome is here */
-          className="w-full rounded-xl bg-white/[0.04] py-2.5 pl-9 pr-16 font-body text-body text-fg outline-none ring-1 ring-inset ring-white/[0.07] transition-colors duration-200 placeholder:text-fg-dim hover:bg-white/[0.06] focus:bg-white/[0.06] focus:ring-2 focus:ring-inset focus:ring-electric-400"
+          className="w-full rounded-xl bg-white/[0.04] py-2.5 pl-9 pr-3 font-body sm:pr-16 text-body text-fg outline-none ring-1 ring-inset ring-white/[0.07] transition-colors duration-200 placeholder:text-fg-dim hover:bg-white/[0.06] focus:bg-white/[0.06] focus:ring-2 focus:ring-inset focus:ring-electric-400"
         />
         {q ? (
           <button

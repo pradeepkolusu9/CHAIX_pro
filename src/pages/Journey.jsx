@@ -1,12 +1,10 @@
-﻿import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, Check, Flag, Lock, Trophy } from 'lucide-react'
+import { ArrowRight, Check, Clock, Flag, Lock, MapPin, Trophy } from 'lucide-react'
 import {
   Button,
   Card,
-  IconBadge,
-  MODULE_SIGILS,
   Panel,
   Pill,
   ProgressBar,
@@ -16,9 +14,11 @@ import {
 import { useStore } from '../lib/store.jsx'
 import { MODULES } from '../data/modules.js'
 import { ACCENT, LEVELS, levelNumber, moduleXpTotal } from '../lib/gamification.js'
+import { toneFor } from '../lib/moduleTone.js'
 import { useCountUp, useReducedMotionPref } from '../lib/hooks.js'
 
 const EASE = [0.16, 1, 0.3, 1]
+const ROW = 300 // px per module on desktop; the path geometry is derived from it
 
 /** Badge ids that simply mirror a module completion, mapped to that module. */
 const BADGE_MODULE = {
@@ -79,39 +79,155 @@ function badgeRemaining(badge, { stats, unlocked, streak, sixtySecond }) {
   }
 }
 
-/* -------------------------------------------------------------- node marker */
-function NodeMarker({ state, accent, index, pulse }) {
-  const base = 'relative grid h-11 w-11 place-items-center rounded-full sm:h-14 sm:w-14'
+/* --------------------------------------------------------------- sky pieces */
+/** A soft cloud: three blurred white blobs. CSS only, decorative. */
+function Cloud({ className = '' }) {
+  return (
+    <div aria-hidden="true" className={`pointer-events-none absolute -z-10 h-24 w-56 ${className}`}>
+      <span className="absolute left-0 top-8 h-12 w-40 rounded-full bg-pure/80 blur-xl" />
+      <span className="absolute left-10 top-0 h-20 w-24 rounded-full bg-pure/80 blur-xl" />
+      <span className="absolute left-24 top-6 h-14 w-28 rounded-full bg-pure/70 blur-xl" />
+    </div>
+  )
+}
 
-  if (state === 'done') {
-    return (
-      <div className={`${base} ${accent.bg} text-white ring-4 ring-white/[0.05] ${accent.glow}`}>
-        <Check className="h-[18px] w-[18px] sm:h-6 sm:w-6" strokeWidth={3} />
+/** Measure an element's width so the SVG path can be drawn 1:1 in pixels. */
+function useWidth() {
+  const ref = useRef(null)
+  const [w, setW] = useState(0)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return undefined
+    setW(el.getBoundingClientRect().width)
+    const ro = new ResizeObserver(([e]) => setW(e.contentRect.width))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  return [ref, w]
+}
+
+/* -------------------------------------------------------------------- tile */
+function NodeTile({ r, pulse }) {
+  const { state, m } = r
+  const locked = state === 'locked'
+  const shape = 'rounded-2xl lg:rounded-[28px]'
+  return (
+    <div className={`relative bg-pure ${shape}`}>
+      {state === 'current' && pulse && (
+        <span aria-hidden="true" className={`absolute inset-0 animate-pulse-ring ${shape}`} />
+      )}
+      <div
+        className={`tile tile-${toneFor(m.id)} relative h-16 w-16 lg:h-24 lg:w-24 ${shape} ${
+          state === 'done' ? 'shadow-glow-xp ring-4 ring-xp-400/60' : ''
+        } ${state === 'current' ? 'ring-4 ring-electric-500/50' : ''} ${
+          locked ? 'opacity-85 saturate-[.55]' : ''
+        }`}
+      >
+        <Sigil id={m.id} size={36} />
       </div>
-    )
-  }
+      {state === 'done' && (
+        <span className="absolute -right-2 -top-2 grid h-8 w-8 place-items-center rounded-full bg-good text-pure shadow-glow-xp ring-2 ring-pure">
+          <Check size={16} strokeWidth={3} />
+          <span className="sr-only">Completed</span>
+        </span>
+      )}
+      {locked && (
+        <span className="absolute -right-2 -top-2 grid h-8 w-8 place-items-center rounded-full bg-ink-800 text-pure ring-2 ring-pure">
+          <Lock size={14} strokeWidth={2.4} />
+          <span className="sr-only">Locked</span>
+        </span>
+      )}
+    </div>
+  )
+}
 
-  if (state === 'current') {
-    return (
-      <div className="relative grid place-items-center">
-        <div
-          className={`absolute inset-0 rounded-full ${pulse ? 'animate-pulse-ring' : ''}`}
-          aria-hidden="true"
+/* -------------------------------------------------------------------- card */
+function NodeCard({ r }) {
+  const { state, m, s } = r
+  const locked = state === 'locked'
+  const isNext = r.isNext
+
+  const shell = locked
+    ? 'rounded-3xl bg-pure/60 p-5 shadow-sheet ring-1 ring-inset ring-white/[0.08] backdrop-blur-md'
+    : state === 'current'
+      ? 'sheet-lg sheet-focal p-5 ring-2 ring-electric-500/40 sm:p-6'
+      : 'sheet p-5'
+
+  return (
+    <div className={`group transition-transform duration-300 lg:hover:-translate-y-0.5 ${shell}`} tabIndex={-1}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="eyebrow">Mission {String(r.index).padStart(2, '0')}</span>
+        {state === 'current' && (
+          <span className="chip-electric">
+            <MapPin size={11} strokeWidth={2.4} />
+            You are here
+          </span>
+        )}
+        {state === 'done' && <Pill tone="good" icon={Check}>Completed</Pill>}
+        {isNext && <Pill icon={Lock}>Up next</Pill>}
+      </div>
+
+      <h3 className="t2 mt-1.5">{m.name}</h3>
+      {(!locked || isNext) && <p className="copy mt-1">{m.tagline}</p>}
+
+      {locked ? (
+        <p className="caption mt-2 flex items-start gap-1.5 text-fg-muted">
+          <Lock size={12} strokeWidth={2.4} className="mt-[3px] shrink-0" />
+          <span>
+            Unlocks after {r.blocker ? r.blocker.name : 'the previous module'}
+            {r.blocker && r.blocker.pct > 0 ? ` (${r.blocker.pct}% done)` : ''}
+          </span>
+        </p>
+      ) : (
+        <ProgressBar
+          className="mt-4"
+          value={s.pct}
+          variant={state === 'done' ? 'xp' : 'default'}
+          showLabel
+          size="sm"
+          label={`${r.doneUnits} of ${r.units} activities`}
         />
-        <div
-          className={`${base} relative bg-ink-850 ring-2 ${accent.ring} ${accent.text} grid place-items-center text-sm font-extrabold tabular-nums sm:text-base`}
-        >
-          {index}
+      )}
+
+      <div className="mt-3.5 flex flex-wrap items-center gap-2">
+        <span className="chip-xp">+{r.xp} XP</span>
+        <span className="chip">
+          <Clock size={11} strokeWidth={2.4} />~{m.minutes} min
+        </span>
+        <span className="chip">{m.difficulty}</span>
+      </div>
+
+      {/* expands on hover / keyboard focus on desktop; always open on touch layouts */}
+      <div
+        className={`grid grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out lg:grid-rows-[0fr] lg:group-focus-within:grid-rows-[1fr] lg:group-hover:grid-rows-[1fr] ${
+          state === 'current' ? '' : 'max-lg:hidden'
+        }`}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="pt-4">
+            {m.blurb && <p className="copy line-clamp-3">{m.blurb}</p>}
+            <p className="caption tnum mt-2">
+              {s.scenariosDone}/{s.scenarioTotal} scenarios · Quiz {s.quizBest}/{s.quizTotal}
+            </p>
+          </div>
         </div>
       </div>
-    )
-  }
 
-  // locked — quiet, and the lock is never the only signal: the row beside it
-  // always carries "complete the previous module" copy.
-  return (
-    <div className={`grid h-9 w-9 place-items-center rounded-full bg-white/[0.04] text-fg-faint sm:h-10 sm:w-10`}>
-      <Lock size={13} strokeWidth={2.2} />
+      {state === 'done' && (
+        <div className="mt-4">
+          <Button as={Link} to={`/lesson/${m.id}`} variant="ghost" size="sm" iconRight={ArrowRight}>
+            Replay
+          </Button>
+        </div>
+      )}
+
+      {state === 'current' && (
+        <div className="mt-4">
+          <Button as={Link} to={`/lesson/${m.id}`} variant="primary" iconRight={ArrowRight}>
+            {s.pct > 0 ? 'Continue' : 'Start'}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -123,6 +239,7 @@ export default function Journey() {
   const nodes = useRef({})
   const accent = ACCENT[level.accent] || ACCENT.electric
   const xpShown = useCountUp(level.xp, { duration: 1100 })
+  const [mapRef, mapW] = useWidth()
 
   const rows = useMemo(
     () =>
@@ -148,14 +265,13 @@ export default function Journey() {
         const doneUnits = s.lessonsRead + s.scenariosDone + (s.quizDone ? s.quizTotal : 0)
         return {
           m,
+          i,
           index: i + 1,
           s,
           open,
           state,
-          blocker: blocker
-            ? { name: blocker.name, pct: stats[blocker.id]?.pct || 0 }
-            : null,
-          accent: ACCENT[m.accent] || ACCENT.electric,
+          side: i % 2 === 0 ? 'L' : 'R',
+          blocker: blocker ? { name: blocker.name, pct: stats[blocker.id]?.pct || 0 } : null,
           units,
           doneUnits,
           xp: moduleXpTotal(m),
@@ -168,69 +284,109 @@ export default function Journey() {
   const allDone = doneCount === rows.length
   const current = rows.find((r) => r.state === 'current') || null
   const nextLocked = rows.find((r) => !r.open) || null
-  const blocker = nextLocked ? nextLocked.blocker : null
   const badgeLeft = badgeRemaining(nextBadge, { stats, unlocked, streak, sixtySecond })
+  const shown = rows.map((r) => ({ ...r, isNext: nextLocked ? r.m.id === nextLocked.m.id : false }))
 
-  const jump = (key) => {
+  const jump = (key, behavior) => {
     const el = nodes.current[key]
     if (!el) return
-    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+    el.scrollIntoView({ behavior: behavior || (reduce ? 'auto' : 'smooth'), block: 'center' })
   }
 
+  // The map climbs upward, so land the reader on their own node, not the summit.
+  useEffect(() => {
+    if (!current) return undefined
+    const id = setTimeout(() => jump(current.m.id, 'auto'), 120)
+    return () => clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  /* the winding path, drawn in real pixels; module 1 sits at the bottom */
+  const H = rows.length * ROW
+  const path = useMemo(() => {
+    if (!mapW) return ''
+    const pts = [
+      { x: mapW / 2, y: H + 36 },
+      ...rows.map((r) => ({ x: mapW * (r.side === 'L' ? 0.3 : 0.7), y: (rows.length - 1 - r.i) * ROW + ROW / 2 })),
+      { x: mapW / 2, y: -36 },
+    ]
+    return pts.reduce((d, p, k) => {
+      if (k === 0) return `M${p.x} ${p.y}`
+      const a = pts[k - 1]
+      const mid = (a.y + p.y) / 2
+      return `${d} C${a.x} ${mid} ${p.x} ${mid} ${p.x} ${p.y}`
+    }, '')
+  }, [mapW, rows, H])
+  const lit = allDone ? 1 : (doneCount + 1) / (rows.length + 1)
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-12 sm:space-y-16">
       {/* --------------------------------------------------------- header */}
-      <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
+      <header className="grid gap-6 lg:grid-cols-12 lg:items-end">
+        <div className="min-w-0 lg:col-span-7">
           <div className="eyebrow mb-2">The map</div>
           <h1 className="t1">Your Legal Journey</h1>
-          <p className="copy measure mt-2">
-            {doneCount} of {rows.length} modules complete · {impact.journeyPct}% of the journey ·{' '}
-            {rows.length - doneCount} still to unlock
+          <p className="lead mt-2 max-w-xl">
+            {allDone
+              ? `All ${rows.length} modules cleared. You made it to the top.`
+              : `${doneCount} of ${rows.length} modules done. Climb the path, one module opens the next.`}
           </p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {allDone ? (
-              <>
-                <Pill tone="good">All {rows.length} missions cleared</Pill>
-                <Pill tone="electric">Legal Legend</Pill>
-              </>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <span className="chip-electric">{impact.journeyPct}% of the journey</span>
+            {nextLocked && <span className="chip">Next unlock: {nextLocked.m.name}</span>}
+            {!nextBadge ? (
+              <span className="chip-good">Every badge earned</span>
+            ) : badgeLeft != null ? (
+              <span className="chip-xp">Badge almost yours: {badgeLeft} to go</span>
             ) : (
-              <>
-                <Pill tone="electric">
-                  Mission {String(current ? current.index : rows.length).padStart(2, '0')} of{' '}
-                  {String(rows.length).padStart(2, '0')}
-                </Pill>
-                <span className="chip">
-                  {rows.filter((r) => r.open).length} unlocked ·{' '}
-                  {rows.filter((r) => !r.open).length} locked
-                </span>
-              </>
+              <span className="chip">{nextBadge.hint}</span>
             )}
           </div>
+          {current && (
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <Button variant="ghost" size="sm" icon={MapPin} onClick={() => jump(current.m.id)}>
+                Jump to my spot
+              </Button>
+              <div className="no-scrollbar hidden items-center gap-1 lg:flex" role="group" aria-label="Jump to module">
+                {rows.map((r) => (
+                  <button
+                    key={r.m.id}
+                    type="button"
+                    onClick={() => jump(r.m.id)}
+                    aria-label={`Jump to ${r.m.name}`}
+                    className={`tnum grid h-9 w-9 place-items-center rounded-full text-caption font-bold transition-colors ${
+                      r.state === 'current'
+                        ? 'bg-electric-500 text-pure'
+                        : r.state === 'done'
+                          ? 'bg-xp-200 text-xp-300'
+                          : 'bg-white/[0.06] text-fg-dim hover:text-fg'
+                    }`}
+                  >
+                    {r.index}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* live level strip */}
-        <Card className="w-full shrink-0 p-4 sm:w-[300px]">
+        {/* level card */}
+        <Card className="lg:col-span-5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="eyebrow">Current level</div>
-              <div className="t3 mt-1 truncate">{level.name}</div>
+              <div className="t2 mt-1 truncate">{level.name}</div>
             </div>
-            {/* the one place the level may be a num-xl, and only beside its name */}
             <div className={`num-xl ${accent.text}`}>{levelNumber(level.level)}</div>
           </div>
           <ProgressBar
-            className="mt-3.5"
+            className="mt-4"
             value={level.pct}
             variant="xp"
             showLabel
-            label={
-              level.isMax
-                ? 'Highest level'
-                : `${formatNumber(level.into)} / ${formatNumber(level.span)} XP`
-            }
+            label={level.isMax ? 'Highest level' : `${formatNumber(level.into)} / ${formatNumber(level.span)} XP`}
           />
-          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <span className="chip-xp">{formatNumber(xpShown)} XP</span>
             <span className="caption">
               {level.isMax
@@ -241,264 +397,22 @@ export default function Journey() {
         </Card>
       </header>
 
-      {/* ------------------------------------------- jump to module (desktop) */}
-      <div className="hidden lg:block">
-        <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto pb-1">
-          <span className="eyebrow mr-1 shrink-0 pr-1">Jump to</span>
-          <button
-            onClick={() => jump('start')}
-            className="chip shrink-0 whitespace-nowrap text-fg-muted transition-colors hover:text-white"
-          >
-            Start
-          </button>
-          {rows.map((r) => {
-            const active = r.state === 'current'
-            const isNextLocked = nextLocked && r.m.id === nextLocked.m.id
-            return (
-              <button
-                key={r.m.id}
-                onClick={() => jump(r.m.id)}
-                className={`chip shrink-0 whitespace-nowrap transition-colors ${
-                  active
-                    ? 'bg-white/[0.09] text-white'
-                    : r.state === 'locked'
-                      ? 'text-fg-faint'
-                      : 'text-fg-dim hover:text-fg-muted'
-                }`}
-              >
-                <span className="tnum opacity-60">{String(r.index).padStart(2, '0')}</span>
-                {isNextLocked && <Lock size={12} strokeWidth={2.2} className="text-fg-faint" />}
-                {r.m.name}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* --------------------------------------------- sticky milestone strip */}
-      <div className="relative z-30 lg:sticky lg:top-[66px]">
-        <Panel className="flex flex-col gap-3 p-3.5 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <IconBadge
-              icon={nextLocked ? MODULE_SIGILS[nextLocked.m.id] : Trophy}
-              tone={nextLocked ? 'muted' : 'xp'}
-              size="sm"
-            />
-            <div className="min-w-0">
-              <div className="eyebrow">Next module unlock</div>
-              <p className="t3 truncate">{nextLocked ? nextLocked.m.name : 'Every module on the map is unlocked'}</p>
-              {blocker && <p className="caption mt-0.5 truncate">Finish {blocker.name} to open it</p>}
-            </div>
-          </div>
-          {!nextBadge ? (
-            <span className="chip-good shrink-0">Every badge earned</span>
-          ) : badgeLeft != null ? (
-            <span className="chip-xp shrink-0">Almost unlocked — {badgeLeft} more to go</span>
-          ) : (
-            <span className="chip shrink-0">{nextBadge.hint}</span>
-          )}
-        </Panel>
-      </div>
-
-      {/* ------------------------------------------------------ the path */}
-      <div className="relative pl-[60px] sm:pl-20">
-        {/* the travelling line */}
-        <div
-          className="pointer-events-none absolute bottom-0 left-[21px] top-0 w-px bg-gradient-to-b from-transparent via-electric-500/40 to-transparent sm:left-[27px]"
-          aria-hidden="true"
-        />
-
-        {/* node 0 — start */}
-        <motion.div
-          ref={(el) => {
-            nodes.current.start = el
-          }}
-          initial={{ opacity: 0, y: 12 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-40px' }}
-          transition={{ duration: 0.3, ease: EASE }}
-          className="relative mb-6 flex items-start gap-4 sm:mb-8 sm:gap-6"
-        >
-          <div className="flex w-11 shrink-0 justify-center sm:w-14">
-            <div className="grid h-9 w-9 place-items-center rounded-full bg-white/[0.05] text-fg-muted sm:h-10 sm:w-10">
-              <Flag size={14} strokeWidth={2.4} />
-            </div>
-          </div>
-          <div className="min-w-0 flex-1">
-            <Card className="p-4 sm:p-5">
-              <div className="eyebrow">Start</div>
-              <div className="t3 mt-1">{LEVELS[0].name}</div>
-              <p className="copy measure mt-1.5">
-                You begin here. Work the map in order — every module opens the next one, and each
-                one you finish permanently raises what you know about your own rights.
-              </p>
-              {current && (
-                <p className="caption mt-2.5">
-                  First up: <span className="font-semibold text-fg-muted">{current.m.name}</span>
-                </p>
-              )}
-            </Card>
-          </div>
-        </motion.div>
-
-        {/* nodes 1..8 — one per module */}
-        {rows.map((r, i) => {
-          const last = i === rows.length - 1
-
-          /* locked: one genuinely quiet line. No box, no click, one lock. */
-          if (r.state === 'locked') {
-            return (
-              <motion.div
-                key={r.m.id}
-                ref={(el) => {
-                  nodes.current[r.m.id] = el
-                }}
-                initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ duration: 0.28, ease: EASE }}
-                className={`relative flex items-start gap-4 sm:gap-6 ${last ? '' : 'mb-2'}`}
-              >
-                <div className="flex w-11 shrink-0 justify-center pt-1 sm:w-14">
-                  <NodeMarker state="locked" accent={r.accent} index={r.index} pulse={false} />
-                </div>
-                {/* Locked rows were `opacity-40 grayscale`, which put the unlock instruction at a
-                    measured 1.76:1 — the one piece of text that tells the user how to
-                    progress was the least legible on the page. `opacity-75` lands near
-                    4.8:1, and the de-emphasis now comes from the marker and the dimmed
-                    title rather than from making the instruction unreadable. The copy
-                    also WRAPS instead of truncating: it is a sentence, not a label. */}
-                <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2.5 gap-y-0.5 py-1.5 opacity-75">
-                  <span className="t3 shrink-0 text-fg-dim">{r.m.name}</span>
-                  <span className="caption min-w-0 basis-full sm:basis-auto">
-                    Locked — complete the previous module to unlock
-                    {r.blocker ? ` · finish ${r.blocker.name} (${r.blocker.pct}%) first` : ''}
-                  </span>
-                </div>
-              </motion.div>
-            )
-          }
-
-          const body = (
-            <div className="min-w-0 flex-1">
-              <Card
-                className={
-                  r.state === 'current' ? `p-4 ring-1 sm:p-5 ${r.accent.ring}` : 'p-4 sm:p-5'
-                }
-              >
-                {/* top row — one leading mark, the module's own Sigil */}
-                <div className="flex items-start gap-3">
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/[0.05]">
-                    <Sigil
-                      id={r.m.id}
-                      size={18}
-                      className={r.state === 'current' ? r.accent.text : 'text-fg-muted'}
-                    />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="eyebrow">Mission {String(r.index).padStart(2, '0')}</span>
-                      {r.state === 'current' && <Pill tone="electric">Next mission</Pill>}
-                      {r.state === 'done' && <Pill tone="good">Completed</Pill>}
-                    </div>
-                    <h3 className="t3 mt-1">{r.m.name}</h3>
-                    <p className="copy mt-1">{r.m.tagline}</p>
-                  </div>
-                </div>
-
-                {/* progress */}
-                <ProgressBar
-                  className="mt-4"
-                  value={r.s.pct}
-                  variant={r.state === 'done' ? 'xp' : 'default'}
-                  showLabel
-                  size="sm"
-                  label={`${r.doneUnits} of ${r.units} activities`}
-                />
-
-                {/* meta row */}
-                <div className="mt-3.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-                  <span className="chip-xp">+{r.xp} XP</span>
-                  <Pill>{r.m.difficulty}</Pill>
-                  <span className="caption tnum">
-                    {r.s.scenariosDone}/{r.s.scenarioTotal} scenarios
-                  </span>
-                  <span className="caption tnum">
-                    Quiz {r.s.quizBest}/{r.s.quizTotal}
-                  </span>
-                  <span className="caption">~{r.m.minutes} min</span>
-                </div>
-
-                {/* action */}
-                {r.state === 'current' && (
-                  <div className="mt-4">
-                    <Button
-                      as={Link}
-                      to={`/lesson/${r.m.id}`}
-                      variant="primary"
-                      size="sm"
-                      iconRight={ArrowRight}
-                    >
-                      {r.s.pct > 0 ? 'Continue' : 'Start'}
-                    </Button>
-                  </div>
-                )}
-                {r.state === 'done' && (
-                  <div className="mt-4">
-                    <Button
-                      as={Link}
-                      to={`/lesson/${r.m.id}`}
-                      variant="ghost"
-                      size="sm"
-                      iconRight={ArrowRight}
-                    >
-                      Replay
-                    </Button>
-                  </div>
-                )}
-              </Card>
-            </div>
-          )
-
-          return (
-            <motion.div
-              key={r.m.id}
-              ref={(el) => {
-                nodes.current[r.m.id] = el
-              }}
-              initial={{ opacity: 0, y: 14 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ duration: 0.32, ease: EASE }}
-              className={`relative flex items-start gap-4 sm:gap-6 ${last ? '' : 'mb-6 sm:mb-8'}`}
-            >
-              <div className="flex w-11 shrink-0 justify-center sm:w-14">
-                <NodeMarker state={r.state} accent={r.accent} index={r.index} pulse={!reduce} />
-              </div>
-              {body}
-            </motion.div>
-          )
-        })}
-      </div>
-
       {/* -------------------------------------------- completion celebration */}
       {allDone && (
         <motion.div
           initial={{ opacity: 0, y: 14 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: '-40px' }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: EASE }}
         >
-          <Panel className="sheet-focal p-5 text-center sm:p-8">
+          <Panel className="sheet-focal p-6 text-center sm:p-10">
             <Sigil id="legal-legend" size={40} className="mx-auto text-xp-300" />
             <div className="eyebrow mt-4">Journey complete</div>
-            <h2 className="t2 mt-1.5">Legal Legend</h2>
+            <h2 className="t1 mt-1.5">Legal Legend</h2>
             <p className="copy measure mx-auto mt-2">
-              All {rows.length} modules complete — {formatNumber(level.xp)} XP earned across
-              scenarios, quizzes and lessons. Every module on the map is now yours to replay
-              whenever you need a refresher.
+              {formatNumber(level.xp)} XP earned across scenarios, quizzes and lessons. Every module
+              stays open to replay whenever you need a refresher.
             </p>
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
               <Button as={Link} to="/leaderboard" variant="primary" iconRight={ArrowRight}>
                 See the leaderboard
               </Button>
@@ -512,6 +426,111 @@ export default function Journey() {
           </Panel>
         </motion.div>
       )}
+
+      {/* ------------------------------------------------------ the map */}
+      <section className="relative isolate overflow-x-clip" aria-label="Journey map">
+        {/* light at the summit */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-56 left-1/2 -z-10 h-[520px] w-[900px] max-w-[160%] -translate-x-1/2 bg-[radial-gradient(closest-side,rgba(255,214,140,0.6),rgba(255,236,190,0.25)_55%,transparent)]"
+        />
+        <Cloud className="left-[2%] top-[4%]" />
+        <Cloud className="right-[0%] top-[20%] scale-110" />
+        <Cloud className="left-[4%] top-[42%]" />
+        <Cloud className="right-[4%] top-[64%] scale-125" />
+        <Cloud className="left-[0%] top-[84%]" />
+
+        {/* summit */}
+        <div className="flex flex-col items-center pb-2 text-center">
+          <div className="tile tile-xp grid h-14 w-14 place-items-center rounded-2xl shadow-glow-xp">
+            <Trophy size={24} strokeWidth={2} />
+          </div>
+          <div className="eyebrow mt-2">Summit</div>
+          <p className="t3">Legal Legend</p>
+        </div>
+
+        <div ref={mapRef} className="relative">
+          {/* winding path, desktop */}
+          {mapW > 0 && (
+            <svg
+              aria-hidden="true"
+              width={mapW}
+              height={H}
+              viewBox={`0 0 ${mapW} ${H}`}
+              className="pointer-events-none absolute inset-0 hidden overflow-visible lg:block"
+            >
+              <path d={path} fill="none" stroke="rgba(61,99,245,0.10)" strokeWidth="18" strokeLinecap="round" />
+              <path
+                d={path}
+                fill="none"
+                stroke="rgba(61,99,245,0.4)"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeDasharray="1 11"
+              />
+              <motion.path
+                d={path}
+                fill="none"
+                stroke="#F59E0B"
+                strokeWidth="7"
+                strokeLinecap="round"
+                style={{ filter: 'drop-shadow(0 0 8px rgba(245,158,11,0.55))' }}
+                initial={{ pathLength: reduce ? lit : 0 }}
+                animate={{ pathLength: lit }}
+                transition={{ duration: reduce ? 0 : 1.4, ease: EASE, delay: 0.2 }}
+              />
+            </svg>
+          )}
+          {/* single-column path, mobile */}
+          <div
+            aria-hidden="true"
+            className="absolute -top-2 bottom-0 left-8 -translate-x-1/2 border-l-[3px] border-dashed border-electric-500/30 lg:hidden"
+          />
+
+          <ol className="relative flex flex-col-reverse">
+            {shown.map((r) => {
+              const left = r.side === 'L'
+              return (
+                <motion.li
+                  key={r.m.id}
+                  ref={(el) => {
+                    nodes.current[r.m.id] = el
+                  }}
+                  initial={{ opacity: 0, y: 14 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: '-40px' }}
+                  transition={{ duration: 0.34, ease: EASE }}
+                  className="relative flex items-start gap-4 pb-8 lg:block lg:h-[300px] lg:pb-0"
+                >
+                  <div
+                    className={`shrink-0 lg:absolute lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2 ${
+                      left ? 'lg:left-[30%]' : 'lg:left-[70%]'
+                    }`}
+                  >
+                    <NodeTile r={r} pulse={!reduce} />
+                  </div>
+                  <div
+                    className={`min-w-0 flex-1 lg:absolute lg:top-1/2 lg:w-[calc(70%-110px)] lg:max-w-[440px] lg:-translate-y-1/2 lg:flex-none ${
+                      left ? 'lg:left-[calc(30%+80px)]' : 'lg:right-[calc(30%+80px)]'
+                    }`}
+                  >
+                    <NodeCard r={r} />
+                  </div>
+                </motion.li>
+              )
+            })}
+          </ol>
+        </div>
+
+        {/* start */}
+        <div className="mt-2 flex flex-col items-center text-center">
+          <div className="tile tile-muted grid h-14 w-14 place-items-center rounded-2xl">
+            <Flag size={22} strokeWidth={2.2} />
+          </div>
+          <div className="eyebrow mt-2">Start</div>
+          <p className="t3">{LEVELS[0].name}</p>
+        </div>
+      </section>
     </div>
   )
 }

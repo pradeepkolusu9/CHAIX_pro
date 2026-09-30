@@ -19,7 +19,6 @@ import {
 } from 'lucide-react'
 import {
   Card,
-  SectionHeading,
   Pill,
   Button,
   EmptyState,
@@ -28,6 +27,7 @@ import {
 } from '../components/ui/index.jsx'
 import { searchIndex, getModuleById } from '../data/modules.js'
 import { useMediaQuery } from '../lib/hooks.js'
+import { toneFor } from '../lib/moduleTone.js'
 
 /** The brief's own examples — every one of these returns real content. */
 const SUGGESTED = [
@@ -42,12 +42,6 @@ const SUGGESTED = [
   'never delivered',
   'salary not paid',
 ]
-
-const KIND = {
-  topic: 'Topic',
-  scenario: 'Scenario',
-  quiz: 'Quiz',
-}
 
 const GROUP_ORDER = [
   { key: 'topic', title: 'Topics', sub: 'The full module — read it once, end to end.' },
@@ -68,9 +62,9 @@ function Marked({ text, tokens }) {
     .split(re)
     .map((part, i) =>
       tokens.some((t) => t.toLowerCase() === part.toLowerCase()) ? (
-        <span key={i} className="font-semibold text-electric-300">
+        <mark key={i} className="rounded bg-xp-400/30 px-0.5 font-semibold text-fg">
           {part}
-        </span>
+        </mark>
       ) : (
         <span key={i}>{part}</span>
       ),
@@ -109,36 +103,36 @@ function ResultRow({ row, tokens, index }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1], delay: Math.min(index * 0.02, 0.2) }}
-      className="divide-y divide-white/[0.05]"
     >
-      <Link to={href} className="group flex items-start gap-3.5 py-3.5">
-        <Sigil id={row.sigil} size={16} className="mt-1 shrink-0 text-fg-dim" />
+      <Link to={href} className="pressable group flex items-start gap-4 p-4">
+        <div className={`tile tile-${toneFor(row.moduleId)} h-12 w-12 rounded-2xl`}>
+          <Sigil id={row.sigil} size={24} />
+        </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="eyebrow">{KIND[row.kind]}</span>
-            <span className="text-caption text-fg-dim">
-              <Marked text={row.module} tokens={tokens} />
-            </span>
-            <h3 className="t3 min-w-0 basis-full truncate sm:basis-auto sm:flex-1">
-              <Marked text={row.title} tokens={tokens} />
-            </h3>
-            <span className="num shrink-0 text-xp-300">+{row.xp} XP</span>
+          <div className="text-caption font-semibold text-fg-dim">
+            <Marked text={row.module} tokens={tokens} />
           </div>
+          <h3 className="t3 mt-0.5">
+            <Marked text={row.title} tokens={tokens} />
+          </h3>
           <p className="caption mt-1 line-clamp-2">
             <Marked text={clamp(row.text)} tokens={tokens} />
           </p>
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
             <Pill>{row.difficulty}</Pill>
             <span className="min-w-0 truncate text-caption text-fg-dim">{resource}</span>
           </div>
         </div>
 
-        <ArrowRight
-          size={14}
-          className="mt-1 shrink-0 text-fg-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-fg-muted"
-          strokeWidth={2.2}
-        />
+        <div className="flex shrink-0 flex-col items-end gap-3">
+          <span className="chip-xp">+{row.xp} XP</span>
+          <ArrowRight
+            size={16}
+            className="text-fg-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-electric-300"
+            strokeWidth={2.2}
+          />
+        </div>
       </Link>
     </motion.li>
   )
@@ -207,19 +201,20 @@ export default function SearchPage() {
   }, [results])
 
   return (
-    <div className="mx-auto max-w-[900px] space-y-8 pb-4">
-      <SectionHeading
-        eyebrow="Search"
-        title="Search Indian law, in plain words"
-        sub="Every topic, real-life scenario and quiz question in LawLink. Type what you actually want to know — “my refund never came”, “harassment in college” — and read the result before you open it."
-      />
+    <div className="mx-auto max-w-[900px] space-y-10 pb-4">
+      <div className="pt-4 text-center sm:pt-8">
+        <div className="eyebrow mb-3">Search</div>
+        <h1 className="t1">What do you want to know?</h1>
+        <p className="lead mx-auto mt-2 max-w-xl">
+          Topics, real-life scenarios and quiz questions in plain words. Try “my refund never came”.
+        </p>
+      </div>
 
-      {/* ------------------------------------------------------------ input */}
       <div>
         <div className="relative">
           <SearchIcon
-            size={18}
-            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-fg-dim"
+            size={22}
+            className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-electric-300"
             strokeWidth={2.2}
           />
           <input
@@ -233,7 +228,7 @@ export default function SearchPage() {
             type="search"
             aria-label="Search topics, scenarios and quiz questions"
             placeholder="cyber fraud, refund, drunk driving, ragging…"
-            className="pressable w-full py-4 pl-11 pr-24 text-lead text-fg outline-none placeholder:text-fg-faint focus:ring-2 focus:ring-inset focus:ring-electric-500/50"
+            className="sheet-lg w-full py-5 pl-14 pr-16 text-lead text-fg outline-none placeholder:text-fg-faint focus:ring-2 focus:ring-electric-500/60"
           />
           {term ? (
             <button
@@ -243,25 +238,24 @@ export default function SearchPage() {
                 inputRef.current?.focus()
               }}
               aria-label="Clear search"
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-2 text-fg-dim transition-colors hover:bg-white/10 hover:text-fg"
+              className="absolute right-3 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-xl text-fg-dim transition-colors hover:bg-white/10 hover:text-fg"
             >
-              <X size={16} />
+              <X size={18} />
             </button>
           ) : (
-            <kbd className="pointer-events-none absolute right-4 top-1/2 hidden -translate-y-1/2 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-micro font-semibold text-fg-dim sm:block">
+            <kbd className="pointer-events-none absolute right-5 top-1/2 hidden -translate-y-1/2 rounded-md bg-white/[0.06] px-2 py-0.5 text-micro font-semibold text-fg-dim sm:block">
               /
             </kbd>
           )}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="eyebrow mr-1">Suggested</span>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
           {SUGGESTED.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => commit(s)}
-              className={`chip transition-colors duration-200 hover:bg-white/[0.1] hover:text-fg ${
+              className={`chip min-h-[36px] px-3.5 transition-colors duration-200 hover:bg-white/[0.1] hover:text-fg ${
                 needle === s.toLowerCase() ? 'chip-electric' : ''
               }`}
             >
@@ -273,23 +267,24 @@ export default function SearchPage() {
 
       {/* ----------------------------------------------------------- results */}
       {!needle ? (
-        <Card>
-          <EmptyState
-            icon={Sparkles}
-            title="Pick one of the suggestions above"
-            body="Nothing is typed yet. Search covers all eight topics, their scenarios and every quiz question — results stay inside LawLink’s verified content, so what you read here matches the lesson."
-            action={
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button as={Link} to="/learn" variant="ghost" icon={BookOpen}>
-                  Browse all topics
-                </Button>
-                <Button as={Link} to="/ai" variant="primary" iconRight={ArrowRight}>
-                  Ask LawLink AI
-                </Button>
-              </div>
-            }
-          />
-        </Card>
+        <div className="sheet-lg sheet-focal flex flex-col items-center gap-4 p-8 text-center sm:p-10">
+          <div className="tile tile-violet h-14 w-14 rounded-2xl">
+            <Sparkles size={26} strokeWidth={2} />
+          </div>
+          <h2 className="t2">Pick a suggestion, or ask in your own words</h2>
+          <p className="copy max-w-md">
+            Search covers all eight topics, their scenarios and every quiz question. Not sure what to type? LawLink AI can
+            explain it step by step.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Button as={Link} to="/ai" variant="primary" iconRight={ArrowRight}>
+              Ask LawLink AI
+            </Button>
+            <Button as={Link} to="/learn" variant="ghost" icon={BookOpen}>
+              Browse all topics
+            </Button>
+          </div>
+        </div>
       ) : results.length === 0 ? (
         <Card>
           <EmptyState
@@ -336,11 +331,13 @@ export default function SearchPage() {
 
           {grouped.map((g) => (
             <section key={g.key}>
-              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="t2">{g.title}</h2>
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="t2">
+                  {g.title} <span className="chip ml-1 align-middle">{g.rows.length}</span>
+                </h2>
                 <span className="caption">{g.sub}</span>
               </div>
-              <ul>
+              <ul className="space-y-3">
                 {g.rows.map((row, i) => (
                   <ResultRow
                     key={`${g.key}-${row.id}-${row.title}`}

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LawLink AI — the awareness assistant (/ai).
  *
  * The matching engine lives in ../data/aiKnowledge.js and is finished:
@@ -6,18 +6,8 @@
  *   buildReply(intent, q) -> the structured reply object
  *   suggestedFollowUps(intent) -> string[]        (takes the INTENT, not a reply)
  *
- * This file is only the interface. Every reply renders as ONE sheet divided by
- * hairlines — area, what this means, your rights, what you can do, resource,
- * source, disclaimer — instead of a stack of nested boxes, so the answer reads
- * as a case file and never as a generic chat bubble.
- *
- * v2 notes (docs/council):
- *   - The seven category chips are the ONE place a Sigil may sit in a chip:
- *     they are the app's own topic switcher, and their keys ARE the module ids.
- *   - `.display` appears once, on the start state, and it is words.
- *   - The "not a lawyer" line is a trust feature, so it is prominent — but it
- *     is `<DisclaimerNote />`, neutral, never orange.
- *   - No infinite loop lives on this page (not even the typing dots).
+ * This file is only the interface: a chat thread (user bubbles right, structured
+ * answer cards left) with a composer pinned to the bottom. No infinite loops.
  */
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -30,18 +20,11 @@ import {
   PhoneCall,
   RotateCcw,
   Send,
-  ShieldCheck,
   Siren,
   Sparkles,
 } from 'lucide-react'
-import {
-  Button,
-  DisclaimerNote,
-  IconBadge,
-  Pill,
-  Sigil,
-  VerifiedTag,
-} from '../components/ui/index.jsx'
+import { Pill, Sigil, VerifiedTag } from '../components/ui/index.jsx'
+import { toneFor } from '../lib/moduleTone.js'
 import { useStore } from '../lib/store.jsx'
 import { useAnnounce } from '../lib/announce.jsx'
 import { getModuleById } from '../data/modules.js'
@@ -59,11 +42,8 @@ const ease = [0.16, 1, 0.3, 1]
 
 /* ------------------------------------------------------------------ content */
 
-/**
- * The seven areas. `key` is already the module id, so the sigil is derivable —
- * no data change needed, and the chip can never show an emoji again.
- */
-const AREAS = QUICK_CATEGORIES.map((c) => ({ ...c, sigil: c.key }))
+/** The seven areas. `key` is already the module id. */
+const AREAS = QUICK_CATEGORIES
 
 /** Real situations, every one of them verified against an intent keyword list. */
 const POPULAR = [
@@ -78,38 +58,42 @@ const POPULAR = [
 const SURPRISE_POOL = [...POPULAR, ...AREAS.map((c) => c.q)]
 
 /** Official, callable helplines worth one tap. */
-const CALLABLE_IDS = ['r-112', 'r-cybercrime', 'r-consumer', 'r-181', 'r-1091']
-const CALLABLE = CALLABLE_IDS.map((id) => RESOURCES.find((r) => r.id === id && r.number)).filter(Boolean)
+const CALLABLE = ['r-112', 'r-cybercrime', 'r-consumer', 'r-181', 'r-1091']
+  .map((id) => RESOURCES.find((r) => r.id === id && r.number))
+  .filter(Boolean)
 
 const uid = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 
 /* ----------------------------------------------------------------- fragments */
 
-/**
- * The topic switcher. A 16px Sigil in the leading slot is the ONE legal
- * exception to "no glyph in a chip" — these seven chips are how the user
- * chooses which part of the law to talk about.
- */
+function AreaTile({ id, size = 'h-10 w-10 rounded-xl', px = 20 }) {
+  return (
+    <span className={`tile tile-${toneFor(id)} ${size}`}>
+      <Sigil id={id} size={px} />
+    </span>
+  )
+}
+
+/** Small tinted chip, used for the topic switcher above the composer. */
 function AreaChip({ area, onAsk }) {
   return (
     <button
       type="button"
       onClick={() => onAsk(area.q)}
-      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-white/[0.05] px-2 py-1 font-sans text-micro font-semibold text-fg-muted transition-colors duration-200 hover:bg-white/[0.08] hover:text-fg focus-visible:ring-2 focus-visible:ring-electric-400 focus-visible:outline-none"
+      className="chip-electric min-h-[36px] shrink-0 whitespace-nowrap px-3 transition-colors duration-200 hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electric-400"
     >
-      <Sigil id={area.sigil} size={16} className="text-fg-dim" />
+      <Sigil id={area.key} size={14} />
       {area.label}
     </button>
   )
 }
 
-/** One band of the answer sheet: eyebrow, a hairline, then the content. */
-function Band({ label, action, children }) {
+/** One labelled section of an answer. */
+function Block({ label, children, action }) {
   return (
-    <section className="px-5 py-4">
-      <div className="mb-2.5 flex items-center gap-3">
-        <span className="eyebrow shrink-0">{label}</span>
-        <span className="h-px flex-1 bg-white/[0.05]" aria-hidden="true" />
+    <section className="px-5 py-4 sm:px-6">
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <span className="eyebrow">{label}</span>
         {action}
       </div>
       {children}
@@ -131,20 +115,18 @@ function ResourceBlock({ resource, urgent }) {
     return (
       <a
         href={`tel:${resource.number}`}
-        className={`pressable flex items-center gap-3 px-4 py-3.5 ring-2 ring-inset ${
-          urgent ? 'bg-danger/[0.07] ring-danger/25' : 'bg-electric-500/[0.07] ring-electric-500/25'
-        }`}
+        className="pressable flex items-center gap-4 p-4"
       >
+        <span className={`tile ${urgent ? 'tile-danger' : 'tile-electric'} h-12 w-12 rounded-2xl`}>
+          <PhoneCall size={20} strokeWidth={2.2} />
+        </span>
         <span className="min-w-0 flex-1">
           <span className={`num-lg block ${urgent ? 'text-danger' : 'text-electric-300'}`}>
             {resource.number}
           </span>
           <span className="caption mt-0.5 block">{resource.label}</span>
         </span>
-        <span className="flex shrink-0 items-center gap-1.5">
-          <span className="eyebrow">Tap to call</span>
-          <PhoneCall size={17} className={urgent ? 'text-danger' : 'text-electric-300'} strokeWidth={2.2} />
-        </span>
+        <span className="eyebrow shrink-0">Tap to call</span>
       </a>
     )
   }
@@ -154,14 +136,25 @@ function ResourceBlock({ resource, urgent }) {
       href={resource.href}
       target="_blank"
       rel="noreferrer noopener"
-      className="pressable flex items-center gap-3 px-4 py-3.5"
+      className="pressable flex items-center gap-4 p-4"
     >
+      <span className="tile tile-electric h-12 w-12 rounded-2xl">
+        <ExternalLink size={19} strokeWidth={2.2} />
+      </span>
       <span className="min-w-0 flex-1">
         <span className="t3 block">{resource.label}</span>
         <span className="caption mt-0.5 block">Open the official site</span>
       </span>
-      <ExternalLink size={16} className="shrink-0 text-fg-dim" strokeWidth={2.2} />
     </a>
+  )
+}
+
+/** The assistant's avatar next to each turn. */
+function Avatar() {
+  return (
+    <span className="tile tile-solid mt-1 hidden h-9 w-9 rounded-xl sm:grid">
+      <Bot size={18} strokeWidth={2.1} />
+    </span>
   )
 }
 
@@ -174,13 +167,15 @@ function TypingDots() {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 6 }}
       transition={{ duration: 0.2, ease }}
+      className="flex gap-3"
     >
-      <div className="pressable flex w-full items-center gap-3 px-3.5 py-3">
+      <Avatar />
+      <div className="sheet flex items-center gap-3 px-4 py-3">
         <div className="flex items-center gap-1.5" aria-hidden="true">
           {[0, 1, 2].map((i) => (
             <motion.span
               key={i}
-              className="h-1.5 w-1.5 rounded-full bg-fg-dim"
+              className="h-1.5 w-1.5 rounded-full bg-electric-500"
               initial={{ opacity: 0.25 }}
               animate={reduce ? { opacity: 0.7 } : { opacity: [0.25, 1, 0.9], y: [0, -3, 0] }}
               transition={{ duration: 0.5, delay: i * 0.12, ease: 'easeOut' }}
@@ -202,40 +197,30 @@ function ReplyCard({ message, onAsk }) {
   if (!reply) {
     return (
       <div className="sheet overflow-hidden">
-        <div className="px-5 pt-5">
+        <div className="px-5 pt-5 sm:px-6 sm:pt-6">
           <div className="eyebrow mb-2">No verified match yet</div>
           <h3 className="t2">I will not guess at a law or a helpline</h3>
           <p className="copy measure mt-2">
-            I answer only from a checked knowledge base, so an unverified section or number never
-            reaches you. Nothing is lost by asking again — pick an area below, or reword it as what
+            I answer only from a checked knowledge base. Pick an area below, or reword it as what
             happened rather than what you want to know.
           </p>
         </div>
 
-        <div className="mt-5 border-t border-white/[0.05] px-5 py-4">
-          <div className="eyebrow mb-3">Pick an area instead</div>
-          <div className="flex flex-wrap gap-1.5">
-            {AREAS.map((c) => (
-              <AreaChip key={c.key} area={c} onAsk={onAsk} />
-            ))}
-          </div>
+        <div className="flex flex-wrap gap-2 px-5 py-4 sm:px-6">
+          {AREAS.map((c) => (
+            <AreaChip key={c.key} area={c} onAsk={onAsk} />
+          ))}
         </div>
 
-        <div className="border-t border-white/[0.05] px-5 py-4">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link
-              to="/emergency"
-              className="inline-flex items-center gap-2 font-sans text-t3 font-semibold text-danger hover:underline"
-            >
-              <Siren size={14} className="shrink-0" strokeWidth={2.3} />
-              In immediate danger, call 112 first
-            </Link>
-            <span className="caption">{GREETING.meaning}</span>
-          </div>
-        </div>
-
-        <div className="px-5 pb-5">
-          <DisclaimerNote text={DISCLAIMER} />
+        <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+          <Link
+            to="/emergency"
+            className="inline-flex items-center gap-2 font-sans text-t3 font-semibold text-danger hover:underline"
+          >
+            <Siren size={15} className="shrink-0" strokeWidth={2.3} />
+            In immediate danger, call 112 first
+          </Link>
+          <p className="caption mt-2">{GREETING.meaning}</p>
         </div>
       </div>
     )
@@ -247,7 +232,7 @@ function ReplyCard({ message, onAsk }) {
   return (
     <div className="sheet overflow-hidden">
       {/* a. the legal area, and whether it is time-critical */}
-      <div className="flex flex-wrap items-center gap-2 px-5 pt-5">
+      <div className="flex flex-wrap items-center gap-2 px-5 pt-5 sm:px-6 sm:pt-6">
         <Pill tone="electric">{reply.area}</Pill>
         {reply.urgent && (
           <Pill tone="danger" icon={AlertTriangle}>
@@ -256,100 +241,97 @@ function ReplyCard({ message, onAsk }) {
         )}
       </div>
 
-      <div className="mt-4 divide-y divide-white/[0.05] border-t border-white/[0.05]">
-        {/* b. what this means */}
-        <Band label="What this means">
-          <p className="copy measure">{reply.meaning}</p>
-        </Band>
-
-        {/* c. rights */}
-        {reply.rights?.length > 0 && (
-          <Band label="Your rights">
-            <ul className="space-y-2">
-              {reply.rights.map((r) => (
-                <li key={r} className="flex gap-2.5">
-                  <span
-                    className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-fg-faint"
-                    aria-hidden="true"
-                  />
-                  <span className="copy">{r}</span>
-                </li>
-              ))}
-            </ul>
-          </Band>
-        )}
-
-        {/* d. what you can do — step 1 is the action to take right now */}
-        {reply.steps?.length > 0 && (
-          <Band label="What you can do">
-            <ol className="space-y-3">
-              {reply.steps.map((s, i) => (
-                <li key={s.step} className="flex gap-3">
-                  <span
-                    className={
-                      i === 0
-                        ? 'mt-px grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-electric-500 font-sans text-micro font-extrabold text-white'
-                        : 'mt-px grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-white/[0.06] font-sans text-micro font-bold text-fg-dim'
-                    }
-                  >
-                    {s.step}
-                  </span>
-                  <div className="min-w-0">
-                    {i === 0 && <div className="eyebrow mb-1 text-electric-300">Do this first</div>}
-                    <p className={i === 0 ? 't3 text-fg' : 'copy'}>{s.text}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </Band>
-        )}
-
-        {/* e. the resource — a number you can actually press */}
-        <Band label="Relevant resource">
-          <ResourceBlock resource={reply.resource} urgent={reply.urgent} />
-        </Band>
-
-        {/* f. where it came from */}
-        {reply.source && (
-          <Band label="Source" action={<VerifiedTag date={VERIFIED_ON} />}>
-            <a
-              href={reply.source.href}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex items-center gap-1.5 font-sans text-body font-semibold text-electric-300 underline decoration-electric-500/40 underline-offset-2 hover:decoration-electric-400"
-            >
-              {reply.source.label}
-              <ExternalLink size={12} strokeWidth={2.4} />
-            </a>
-          </Band>
-        )}
+      {/* b. what this means */}
+      <div className="px-5 pb-1 pt-3 sm:px-6">
+        <h3 className="eyebrow mb-1.5">What this means</h3>
+        <p className="lead">{reply.meaning}</p>
       </div>
 
-      {/* g. always offered: go and learn the topic properly */}
-      {mod && (
-        <div className="border-t border-white/[0.05]">
-          <Link
-            to={`/lesson/${mod.id}`}
-            className="flex items-center gap-3 px-5 py-4 transition-colors duration-200 hover:bg-white/[0.03]"
+      {/* c. rights */}
+      {reply.rights?.length > 0 && (
+        <Block label="Your rights">
+          <div className="inset space-y-2 p-4">
+            {reply.rights.map((r) => (
+              <div key={r} className="flex gap-2.5">
+                <span className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full bg-electric-500" aria-hidden="true" />
+                <span className="copy">{r}</span>
+              </div>
+            ))}
+          </div>
+        </Block>
+      )}
+
+      {/* d. what you can do — step 1 is the action to take right now */}
+      {reply.steps?.length > 0 && (
+        <Block label="What you can do">
+          <ol className="space-y-3">
+            {reply.steps.map((s, i) => (
+              <li key={s.step} className="flex gap-3">
+                <span
+                  className={
+                    i === 0
+                      ? 'tile tile-solid num mt-px h-7 w-7 rounded-lg !text-micro font-extrabold'
+                      : 'tile tile-electric num mt-px h-7 w-7 rounded-lg !text-micro'
+                  }
+                >
+                  {s.step}
+                </span>
+                <div className="min-w-0">
+                  {i === 0 && <div className="eyebrow mb-0.5">Do this first</div>}
+                  <p className={i === 0 ? 't3 text-fg' : 'copy'}>{s.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </Block>
+      )}
+
+      {/* e. the resource — a number you can actually press */}
+      <Block label="Relevant resource">
+        <ResourceBlock resource={reply.resource} urgent={reply.urgent} />
+      </Block>
+
+      {/* f. where it came from */}
+      {reply.source && (
+        <Block label="Source" action={<VerifiedTag date={VERIFIED_ON} />}>
+          <a
+            href={reply.source.href}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-1.5 font-sans text-body font-semibold text-electric-300 underline decoration-electric-500/40 underline-offset-2 hover:decoration-electric-400"
           >
-            <span className="min-w-0 flex-1">
-              <span className="t3 block truncate">Learn this properly</span>
-              <span className="caption block truncate">{mod.name} · the full module</span>
-            </span>
-            <ArrowRight size={15} className="shrink-0 text-electric-300" strokeWidth={2.4} />
-          </Link>
-        </div>
+            {reply.source.label}
+            <ExternalLink size={12} strokeWidth={2.4} />
+          </a>
+        </Block>
+      )}
+
+      {/* g. learn the topic properly */}
+      {mod && (
+        <Link
+          to={`/lesson/${mod.id}`}
+          className="mx-5 my-2 flex items-center gap-3 rounded-2xl bg-electric-500/[0.07] px-4 py-3 transition-colors duration-200 hover:bg-electric-500/[0.12] sm:mx-6"
+        >
+          <span className={`tile tile-${toneFor(mod.id)} h-9 w-9 rounded-xl`}>
+            <Sigil id={mod.id} size={18} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="t3 block truncate">Learn this properly</span>
+            <span className="caption block truncate">{mod.name} · the full module</span>
+          </span>
+          <ArrowRight size={16} className="shrink-0 text-electric-300" strokeWidth={2.4} />
+        </Link>
       )}
 
       {/* keep going */}
       {followUps.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 border-t border-white/[0.05] px-5 py-4">
+        <div className="flex flex-wrap gap-2 px-5 pb-1 pt-3 sm:px-6">
           {followUps.map((f) => (
             <button
               key={f}
               type="button"
               onClick={() => onAsk(f)}
-              className="pressable px-2.5 py-1.5 text-left font-sans text-caption font-medium text-fg-muted transition-colors duration-200 hover:text-fg"
+              className="chip-electric min-h-[36px] px-3 text-left transition-colors duration-200 hover:brightness-95"
             >
               {f}
             </button>
@@ -357,94 +339,86 @@ function ReplyCard({ message, onAsk }) {
         </div>
       )}
 
-      {/* h. the trust line. Prominent on purpose — and neutral, never orange. */}
-      <div className="px-5 pb-5 pt-4">
-        <DisclaimerNote text={reply.disclaimer || DISCLAIMER} />
-      </div>
+      {/* h. one small disclaimer */}
+      <p className="caption px-5 pb-5 pt-3 sm:px-6">{reply.disclaimer || DISCLAIMER}</p>
     </div>
   )
 }
 
-/* ---------------------------------------------------------------- right rail */
+/* --------------------------------------------------------------- empty state */
 
-function ContextPanel({ onAsk }) {
+function EmptyState({ name, onAsk }) {
   return (
-    <div className="space-y-3">
-      {/* one surface, three bands — a rail is a list, not a stack of cards */}
-      <div className="sheet divide-y divide-white/[0.05] overflow-hidden">
-        <div className="p-4">
-          <div className="eyebrow mb-3">Start with an area</div>
-          <div className="flex flex-wrap gap-1.5">
-            {AREAS.map((c) => (
-              <AreaChip key={c.key} area={c} onAsk={onAsk} />
-            ))}
-          </div>
-        </div>
-
-        <div className="p-4">
-          <div className="eyebrow mb-2">Popular questions</div>
-          <div className="space-y-1">
-            {POPULAR.map((q) => (
-              <button
-                key={q}
-                type="button"
-                onClick={() => onAsk(q)}
-                className="pressable w-full px-2.5 py-2 text-left font-sans text-caption font-medium leading-snug text-fg-muted transition-colors duration-200 hover:text-fg"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-4">
-          <div className="eyebrow mb-2">Official numbers — tap to call</div>
-          <div className="divide-y divide-white/[0.05]">
-            {CALLABLE.map((r) => (
-              <a key={r.id} href={`tel:${r.number}`} className="flex items-center gap-3 py-2.5">
-                <span className="num w-14 shrink-0 text-fg">{r.number}</span>
-                <span className="min-w-0 flex-1 truncate caption">{r.name}</span>
-                <PhoneCall size={14} className="shrink-0 text-fg-faint" strokeWidth={2.2} />
-              </a>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <div className="mb-2 flex items-center gap-2">
-          <ShieldCheck size={13} className="text-good" strokeWidth={2.4} />
-          <span className="eyebrow">How answers are built</span>
-        </div>
-        <p className="copy">
-          Every answer is assembled from a knowledge base checked against an official Indian source.
-          Sections, laws and helplines are shown with the date they were verified. Where a provision
-          could not be verified, the law is named in words rather than a guessed section number.
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease }}
+      className="pt-4 sm:pt-10"
+    >
+      <div className="text-center">
+        <span className="tile tile-solid mx-auto h-20 w-20 rounded-[28px]">
+          <Bot size={38} strokeWidth={1.9} />
+        </span>
+        <div className="eyebrow mt-6">LawLink AI · awareness assistant</div>
+        <h1 className="display mt-2 text-[40px] sm:text-[56px]">What happened?</h1>
+        <p className="lead mx-auto mt-3 max-w-[52ch]">
+          {name ? `${name}, tell` : 'Tell'} me in plain words. I will name the legal area, your
+          rights and what to do today — from a checked knowledge base, not a live model.
         </p>
-        <div className="mt-2.5">
-          <VerifiedTag date={VERIFIED_ON} />
+      </div>
+
+      <div className="mt-12">
+        <div className="eyebrow mb-3">Start with an area</div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {AREAS.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => onAsk(c.q)}
+              className="pressable flex items-start gap-3 p-4 text-left"
+            >
+              <AreaTile id={c.key} />
+              <span className="min-w-0 flex-1">
+                <span className="t3 block">{c.label}</span>
+                <span className="caption mt-0.5 block leading-snug">{c.q}</span>
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
-      <div>
-        <Link
-          to="/emergency"
-          className="flex items-center gap-2.5 rounded-xl bg-danger/[0.07] px-3.5 py-3 ring-1 ring-inset ring-danger/20 transition-colors duration-200 hover:bg-danger/[0.11]"
-        >
-          <Siren size={15} className="shrink-0 text-danger" strokeWidth={2.3} />
-          <span className="min-w-0 flex-1">
-            <span className="t3 block">In immediate danger</span>
-            <span className="caption block">Call first, read later. 112 is free.</span>
-          </span>
-        </Link>
+      <div className="mt-10">
+        <div className="eyebrow mb-3">Or try one of these</div>
+        <div className="flex flex-wrap gap-2">
+          {POPULAR.map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => onAsk(q)}
+              className="chip-electric min-h-[40px] px-4 text-left text-caption transition-colors duration-200 hover:brightness-95"
+            >
+              {q}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <DisclaimerNote />
-      <p className="caption">
-        LawLink AI is a static awareness assistant. It does not browse, does not learn from your
-        messages, and does not give case-specific advice.
-      </p>
-    </div>
+      <div className="mt-10 flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="eyebrow mr-1">Tap to call</span>
+        {CALLABLE.map((r) => (
+          <a
+            key={r.id}
+            href={`tel:${r.number}`}
+            className="btn-quiet btn-sm min-h-[44px] gap-1.5 tnum"
+            title={r.name}
+          >
+            <PhoneCall size={13} strokeWidth={2.3} />
+            <span className="font-bold text-fg">{r.number}</span>
+            <span className="hidden text-fg-dim sm:inline">{r.name}</span>
+          </a>
+        ))}
+      </div>
+    </motion.div>
   )
 }
 
@@ -498,9 +472,7 @@ export default function Assistant() {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }, [messages.length, pending])
 
-  /* The answer is the entire content of this screen and it arrives silently, so a
-     screen-reader user hears nothing after pressing Enter. Announce the legal area
-     and the first action, which is the part that matters. */
+  /* The answer arrives silently, so announce the legal area and the first action. */
   const lastAnswer = messages[messages.length - 1]?.reply
   useEffect(() => {
     if (!lastAnswer) return
@@ -548,220 +520,126 @@ export default function Assistant() {
   const empty = messages.length === 0
 
   return (
-    <div className="lg:flex lg:items-start lg:gap-6">
-      {/* ---------------------------------------------------- conversation */}
-      <div className="min-w-0 flex-1">
-        {/* masthead */}
-        <div className="flex items-start gap-3">
-          <IconBadge icon={Bot} tone="electric" size="lg" className="hidden sm:grid" />
-          <IconBadge icon={Bot} tone="electric" size="md" className="sm:hidden" />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="t1">LawLink AI</h1>
-              <span className="chip">Awareness assistant</span>
+    <div className="mx-auto max-w-[820px]">
+      {/* thread header, only once a chat is running */}
+      {!empty && (
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="tile tile-solid h-9 w-9 rounded-xl">
+              <Bot size={18} strokeWidth={2.1} />
+            </span>
+            <div>
+              <div className="t3">LawLink AI</div>
+              <div className="caption">Awareness assistant · not a lawyer</div>
             </div>
-            <p className="copy measure mt-1.5">
-              Curated answers from a verified knowledge base — not a live language model, and not a
-              lawyer.
-            </p>
           </div>
-          {!empty && (
-            <Button
-              variant="quiet"
-              size="sm"
-              onClick={reset}
-              icon={RotateCcw}
-              aria-label="Start over"
-              title="Start over"
-              className="shrink-0"
-            >
-              <span className="hidden sm:inline">Start over</span>
-            </Button>
-          )}
+          <button type="button" onClick={reset} className="btn-quiet btn-sm min-h-[44px]" title="Start over">
+            <RotateCcw size={14} strokeWidth={2.3} />
+            <span className="hidden sm:inline">Start over</span>
+            <span className="sr-only sm:hidden">Start over</span>
+          </button>
         </div>
+      )}
 
-        {/* body */}
-        <div className="mt-5 space-y-4 pb-2">
-          {empty ? (
-            /* ------------------------------------------------- start state */
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, ease }}
-            >
-              {/* the one .display on this screen — words, never a number */}
-              <h2 className="display text-[40px] sm:text-display">What happened?</h2>
-              <p className="lead measure mt-3">
-                {name
-                  ? `${name}, describe what happened in plain words. `
-                  : 'Describe what happened in plain words. '}
-                I will tell you which legal area it falls under, what your rights are, and what to
-                do today.
-              </p>
-
-              <div className="mt-7">
-                <div className="eyebrow mb-2.5">Pick a situation</div>
-                {/* the topic switcher is one sheet, not seven cards */}
-                <div className="sheet divide-y divide-white/[0.05] overflow-hidden">
-                  {AREAS.map((c) => (
-                    <button
-                      key={c.key}
-                      type="button"
-                      onClick={() => ask(c.q)}
-                      className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors duration-200 hover:bg-white/[0.03]"
-                    >
-                      <Sigil
-                        id={c.sigil}
-                        size={16}
-                        className="mt-0.5 shrink-0 text-electric-300"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="t3 block">{c.label}</span>
-                        <span className="copy mt-0.5 block leading-snug">{c.q}</span>
-                      </span>
-                      <ArrowRight
-                        size={14}
-                        className="mt-1 shrink-0 text-fg-faint"
-                        strokeWidth={2.4}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-7">
-                <div className="eyebrow mb-2.5">Popular questions</div>
-                <div className="divide-y divide-white/[0.05]">
-                  {POPULAR.map((q) => (
-                    <button
-                      key={q}
-                      type="button"
-                      onClick={() => ask(q)}
-                      className="flex w-full items-center gap-3 py-2.5 text-left transition-colors duration-200 hover:text-fg"
-                    >
-                      <span className="t3 min-w-0 flex-1">{q}</span>
-                      <ArrowRight size={14} className="shrink-0 text-fg-faint" strokeWidth={2.4} />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-7">
-                <DisclaimerNote text={DISCLAIMER} />
-              </div>
-            </motion.div>
-          ) : (
-            /* ----------------------------------------------- the thread */
-            <AnimatePresence initial={false}>
-              {messages.map((m) =>
-                m.role === 'user' ? (
-                  <motion.div
-                    key={m.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.22, ease }}
-                    className="flex justify-end"
-                  >
-                    {/* the user's own words: tonal, no outline */}
-                    <div className="max-w-[80%] rounded-2xl rounded-br-md bg-white/[0.06] px-3.5 py-2.5">
-                      <p className="whitespace-pre-wrap break-words font-sans text-body leading-relaxed text-fg">
-                        {m.text}
-                      </p>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key={m.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.28, ease }}
-                  >
+      {/* body */}
+      <div className="mt-4 space-y-5 pb-4">
+        {empty ? (
+          <EmptyState name={name} onAsk={ask} />
+        ) : (
+          <AnimatePresence initial={false}>
+            {messages.map((m) =>
+              m.role === 'user' ? (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.22, ease }}
+                  className="flex justify-end"
+                >
+                  <div className="max-w-[85%] rounded-3xl rounded-br-lg bg-gradient-to-b from-electric-400 to-electric-500 px-4 py-3 shadow-glow sm:max-w-[75%]">
+                    <p className="whitespace-pre-wrap break-words font-sans text-body leading-relaxed text-pure">
+                      {m.text}
+                    </p>
+                  </div>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key={m.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.28, ease }}
+                  className="flex gap-3"
+                >
+                  <Avatar />
+                  <div className="min-w-0 flex-1">
                     <ReplyCard message={m} onAsk={ask} />
-                  </motion.div>
-                ),
-              )}
-            </AnimatePresence>
-          )}
+                  </div>
+                </motion.div>
+              ),
+            )}
+          </AnimatePresence>
+        )}
 
-          <AnimatePresence>{pending && <TypingDots />}</AnimatePresence>
+        <AnimatePresence>{pending && <TypingDots />}</AnimatePresence>
 
-          {messages.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {AREAS.slice(0, 4).map((c) => (
-                <AreaChip key={c.key} area={c} onAsk={ask} />
-              ))}
-            </div>
-          )}
+        {/* scroll-mb keeps the last message clear of the sticky composer */}
+        <div ref={endRef} className="h-px w-full scroll-mb-40" aria-hidden="true" />
+      </div>
 
-          {/* scroll-mb keeps the last message clear of the sticky input bar */}
-          <div ref={endRef} className="h-px w-full scroll-mb-32" aria-hidden="true" />
-        </div>
+      {/* ----------------------------------------------------- composer */}
+      <div className="safe-b sticky bottom-[64px] z-20 sm:bottom-0">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 top-0 -z-10 bg-surface-0" />
 
-        {/* ----------------------------------------------------- input bar */}
-        <div className="sticky bottom-[64px] z-20 pt-8 sm:bottom-0">
-          {/* flat canvas behind the bar — no gradient, no blur on this screen */}
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 top-0 -z-10 bg-surface-0"
-          />
-
-          {/* mobile: the seven areas collapse into one scrollable chip row */}
-          <div className="no-scrollbar -mx-1 mb-2 flex gap-1.5 overflow-x-auto px-1 pb-1 lg:hidden">
+        {!empty && (
+          <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-2 pt-3">
             {AREAS.map((c) => (
               <AreaChip key={c.key} area={c} onAsk={ask} />
             ))}
           </div>
+        )}
 
-          <div className="sheet p-2.5">
-            <div className="flex items-end gap-2">
-              <textarea
-                ref={taRef}
-                value={draft}
-                rows={1}
-                onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={onKeyDown}
-                placeholder="Describe what happened in plain words…"
-                aria-label="Describe what happened"
-                className="max-h-[140px] min-h-[38px] min-w-0 flex-1 resize-none bg-transparent px-1.5 py-2 font-body text-body leading-relaxed text-fg outline-none placeholder:text-fg-dim"
-              />
-              <Button
-                variant="quiet"
-                size="sm"
-                onClick={surprise}
-                icon={Sparkles}
-                aria-label="Give me a question to try"
-                title="Surprise me"
-                className="shrink-0"
-              >
-                <span className="hidden sm:inline">Surprise me</span>
-              </Button>
-              <Button
-                onClick={() => ask(draft)}
-                disabled={!draft.trim()}
-                icon={Send}
-                aria-label="Send"
-                className="shrink-0"
-              >
-                <span className="hidden sm:inline">Send</span>
-              </Button>
-            </div>
+        <div className={`sheet p-2 ${empty ? 'mt-3' : ''}`}>
+          <div className="flex items-end gap-1.5">
+            <textarea
+              ref={taRef}
+              value={draft}
+              rows={1}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="Describe what happened in plain words…"
+              aria-label="Describe what happened"
+              className="max-h-[140px] min-h-[44px] min-w-0 flex-1 resize-none bg-transparent px-3 py-2.5 font-body text-body leading-relaxed text-fg outline-none placeholder:text-fg-dim"
+            />
+            <button
+              type="button"
+              onClick={surprise}
+              aria-label="Give me a question to try"
+              title="Surprise me"
+              className="btn-quiet btn-sm h-11 shrink-0"
+            >
+              <Sparkles size={16} strokeWidth={2.3} />
+              <span className="hidden sm:inline">Surprise me</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => ask(draft)}
+              disabled={!draft.trim()}
+              aria-label="Send"
+              className="btn-primary h-11 w-11 shrink-0 !rounded-[14px] !p-0 sm:w-auto sm:!px-4"
+            >
+              <Send size={16} strokeWidth={2.3} />
+              <span className="hidden sm:inline">Send</span>
+            </button>
           </div>
-
-          <p className="caption mt-2 px-1">
-            {DISCLAIMER}{' '}
-            <span className="lg:hidden">
-              <Link to="/emergency" className="font-semibold text-danger hover:underline">
-                Emergency?
-              </Link>
-            </span>
-          </p>
         </div>
-      </div>
 
-      {/* --------------------------------------------------- context rail */}
-      <aside className="hidden w-[320px] shrink-0 lg:sticky lg:top-[84px] lg:block">
-        <ContextPanel onAsk={ask} />
-      </aside>
+        <p className="caption px-1 pb-1 pt-2 text-center">
+          <Link to="/emergency" className="font-semibold text-danger hover:underline">
+            In danger? Call 112.
+          </Link>{' '}
+          Answers are awareness, not legal advice.
+        </p>
+      </div>
     </div>
   )
 }
