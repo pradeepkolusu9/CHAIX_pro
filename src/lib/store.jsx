@@ -522,7 +522,6 @@ export function StoreProvider({ children }) {
         const rec = s.progress.modules[moduleId] || {}
         if (rec.lessonsRead?.includes(lessonId)) return
         const r = award(s, { amount: XP_RULES.lessonRead, reason: 'Lesson read', moduleId, refId: lessonId })
-        r.newEffects.push({ id: nextId('ls'), kind: 'hint', amount: XP_RULES.lessonRead, reason: 'Lesson read' })
         finish(setModule(r.next, moduleId, { lessonsRead: [...(rec.lessonsRead || []), lessonId] }), r.newEffects)
       },
 

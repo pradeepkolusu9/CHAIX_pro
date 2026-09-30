@@ -28,11 +28,12 @@ const ease = [0.16, 1, 0.3, 1]
 const press = [0.2, 0, 0, 1]
 
 /* ------------------------------------------------------------------ XP pop */
-function XpBurst({ effect }) {
+function XpBurst({ effect, onClose }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 0, scale: 0.9 }}
       animate={{ opacity: [0, 1, 1, 0], y: -64, scale: [0.9, 1.04, 1, 0.96] }}
+      onAnimationComplete={onClose}
       exit={{ opacity: 0 }}
       transition={{ duration: 1.9, ease: 'easeOut' }}
       className="pointer-events-none fixed left-1/2 top-[22%] z-[120] -translate-x-1/2"
@@ -344,7 +345,7 @@ export function EffectsHost() {
           return <BadgeUnlock key={e.id} effect={e} onClose={() => dismissEffect(e.id)} />
         if (e.kind === 'streak')
           return <StreakPop key={e.id} effect={e} onClose={() => dismissEffect(e.id)} />
-        if (e.kind === 'xp') return <XpBurst key={e.id} effect={e} />
+        if (e.kind === 'xp') return <XpBurst key={e.id} effect={e} onClose={() => dismissEffect(e.id)} />
         return null
       })}
     </AnimatePresence>

@@ -141,7 +141,7 @@ export function useBurst(duration = 2600) {
           delay: Math.random() * 0.25,
         }
       })
-      setParts(next)
+      setParts((p) => [...p, ...next])
       clearTimeout(timer.current)
       timer.current = setTimeout(() => setParts([]), duration)
     },
