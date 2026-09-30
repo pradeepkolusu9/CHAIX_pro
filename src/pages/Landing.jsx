@@ -22,13 +22,7 @@ import {
   X,
   Zap,
 } from 'lucide-react'
-import {
-  Button,
-  IconBadge,
-  DisclaimerNote,
-  Sigil,
-  VerifiedTag,
-} from '../components/ui/index.jsx'
+import { Button, IconBadge, ConfirmModal, DisclaimerNote, Sigil, VerifiedTag } from '../components/ui/index.jsx'
 import { useStore, useActions } from '../lib/store.jsx'
 import { XP_RULES } from '../lib/gamification.js'
 import { toneFor } from '../lib/moduleTone.js'
@@ -76,7 +70,7 @@ function TopBar() {
           <span className="t3 tracking-tight">LawLink</span>
         </Link>
 
-        <nav className="ml-4 hidden items-center gap-1 lg:flex">
+        <nav aria-label="Primary" className="ml-4 hidden items-center gap-1 lg:flex">
           {NAV_ITEMS.filter((n) => ['/learn', '/journey', '/ai', '/emergency'].includes(n.to)).map((n) => (
             <Link key={n.to} to={n.to} className="btn btn-quiet btn-sm">
               {n.label}
@@ -144,9 +138,9 @@ function PhoneTeaser() {
                 const state = !reveal
                   ? 'pressable cursor-pointer'
                   : isCorrect
-                    ? 'pressable bg-good/[0.08] ring-2 ring-inset ring-good/30'
+                    ? 'pressable bg-none bg-good/[0.08] ring-2 ring-inset ring-good/30'
                     : isPicked
-                      ? 'pressable bg-danger/[0.08] ring-2 ring-inset ring-danger/30'
+                      ? 'pressable bg-none bg-danger/[0.08] ring-2 ring-inset ring-danger/30'
                       : 'pressable opacity-70'
                 return (
                   <button
@@ -171,64 +165,66 @@ function PhoneTeaser() {
               })}
             </div>
 
-            {reveal ? (
-              <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, ease: EASE }}
-                className="mt-4"
-                aria-live="polite"
-              >
-                <div className="flex items-center gap-2">
-                  {right ? (
-                    <Check size={15} className="shrink-0 text-good" strokeWidth={3} />
-                  ) : (
-                    <X size={15} className="shrink-0 text-danger" strokeWidth={2.6} />
-                  )}
-                  <span className={`t3 ${right ? 'text-good' : 'text-danger'}`}>
-                    {right ? 'Correct — good call' : 'Not quite — here is the right move'}
-                  </span>
-                </div>
-                <p className="copy mt-2">{TEASER.why}</p>
-
-                <div className="inset mt-3.5 p-3.5">
-                  <div className="eyebrow">In plain words</div>
-                  <p className="serif mt-1 text-[15px] italic text-fg-muted">{TEASER_MODULE.legalBasis.note}</p>
-                  <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                    <span className="caption flex items-center gap-1.5">
-                      <Scale size={12} className="shrink-0" strokeWidth={2.2} />
-                      {TEASER.law}
-                    </span>
-                    <a
-                      href={TEASER.source}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="flex items-center gap-1.5 text-caption font-semibold text-electric-300 underline decoration-electric-500/40 underline-offset-2"
-                    >
-                      <Link2 size={12} strokeWidth={2.2} />
-                      Official source
-                    </a>
-                    <span className="caption tnum flex items-center gap-1.5">
-                      <CalendarClock size={12} className="shrink-0" strokeWidth={2.2} />
-                      Verified {TEASER.lastVerified}
+            {/* the live region is always mounted, so the reveal is announced when it fills */}
+            <div aria-live="polite">
+              {reveal ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: EASE }}
+                  className="mt-4"
+                >
+                  <div className="flex items-center gap-2">
+                    {right ? (
+                      <Check size={15} className="shrink-0 text-good" strokeWidth={3} />
+                    ) : (
+                      <X size={15} className="shrink-0 text-danger" strokeWidth={2.6} />
+                    )}
+                    <span className={`t3 ${right ? 'text-good' : 'text-danger'}`}>
+                      {right ? 'Correct — good call' : 'Not quite — here is the right move'}
                     </span>
                   </div>
-                </div>
+                  <p className="copy mt-2">{TEASER.why}</p>
 
-                <DisclaimerNote text={DISCLAIMER} compact className="mt-3" />
+                  <div className="inset mt-3.5 p-3.5">
+                    <div className="eyebrow">In plain words</div>
+                    <p className="serif mt-1 text-[15px] italic text-fg-muted">{TEASER_MODULE.legalBasis.note}</p>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                      <span className="caption flex items-center gap-1.5">
+                        <Scale size={12} className="shrink-0" strokeWidth={2.2} />
+                        {TEASER.law}
+                      </span>
+                      <a
+                        href={TEASER.source}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="flex items-center gap-1.5 text-caption font-semibold text-electric-300 underline decoration-electric-500/40 underline-offset-2"
+                      >
+                        <Link2 size={12} strokeWidth={2.2} />
+                        Official source
+                      </a>
+                      <span className="caption tnum flex items-center gap-1.5">
+                        <CalendarClock size={12} className="shrink-0" strokeWidth={2.2} />
+                        Drafted {TEASER.lastVerified}
+                      </span>
+                    </div>
+                  </div>
 
-                <Button
-                  variant="primary"
-                  className="mt-4 w-full"
-                  onClick={() => nav(profile ? '/dashboard' : '/login')}
-                  iconRight={ArrowRight}
-                >
-                  Play all {TOTAL_SCENARIOS} scenarios
-                </Button>
-              </motion.div>
-            ) : (
-              <p className="caption mt-4 text-center">No signup. Tap an answer and the law appears.</p>
-            )}
+                  <DisclaimerNote text={DISCLAIMER} compact className="mt-3" />
+
+                  <Button
+                    variant="primary"
+                    className="mt-4 w-full"
+                    onClick={() => nav(profile ? '/dashboard' : '/login')}
+                    iconRight={ArrowRight}
+                  >
+                    Play all {TOTAL_SCENARIOS} scenarios
+                  </Button>
+                </motion.div>
+              ) : (
+                <p className="caption mt-4 text-center">No signup. Tap an answer and the law appears.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -298,7 +294,6 @@ const SPAN = [
 ]
 
 function ModuleShowcase() {
-  const { profile } = useStore()
   return (
     <Section className="pb-16 sm:pb-24">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -320,15 +315,13 @@ function ModuleShowcase() {
           return (
             <motion.div key={m.id} {...inView(Math.min(i, 5) * 0.05)} className={`${SPAN[i]} min-w-0`}>
               <Link
-                to={profile ? `/lesson/${m.id}` : '/learn'}
+                to={`/lesson/${m.id}`}
                 className={`sheet group flex h-full flex-col p-5 transition-transform hover:-translate-y-0.5 ${
                   big ? 'sheet-focal justify-between p-6 sm:p-8' : ''
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <span
-                    className={`tile tile-${tone} ${big ? 'h-20 w-20 rounded-3xl' : 'h-12 w-12 rounded-2xl'}`}
-                  >
+                  <span className={`tile tile-${tone} ${big ? 'h-20 w-20 rounded-3xl' : 'h-12 w-12 rounded-2xl'}`}>
                     <Sigil id={m.id} size={big ? 38 : 24} />
                   </span>
                   <span className="chip">{m.difficulty}</span>
@@ -372,9 +365,24 @@ function ModuleShowcase() {
 
 /* ------------------------------------------------------------------- trust */
 const PILLARS = [
-  { icon: ShieldCheck, tone: 'good', title: 'Verified sources', body: 'Every answer links to the official text and shows when it was written.' },
-  { icon: BookOpenCheck, tone: 'electric', title: 'Plain words', body: 'Sections and sub-clauses translated into what they mean for you.' },
-  { icon: Scale, tone: 'violet', title: 'Awareness, not advice', body: 'Built to teach. For your own case, talk to a lawyer.' },
+  {
+    icon: ShieldCheck,
+    tone: 'good',
+    title: 'Verified sources',
+    body: 'Every answer links to the official text and shows when it was written.',
+  },
+  {
+    icon: BookOpenCheck,
+    tone: 'electric',
+    title: 'Plain words',
+    body: 'Sections and sub-clauses translated into what they mean for you.',
+  },
+  {
+    icon: Scale,
+    tone: 'violet',
+    title: 'Awareness, not advice',
+    body: 'Built to teach. For your own case, talk to a lawyer.',
+  },
 ]
 
 function TrustBand() {
@@ -421,7 +429,10 @@ function TrustBand() {
           <ul className="grid grid-cols-2 gap-px bg-danger/[0.08] md:grid-cols-5">
             {lines.map((r) => (
               <li key={r.id} className="min-w-0 bg-pure">
-                <a href={`tel:${r.number}`} className="block min-h-[44px] px-4 py-3.5 transition-colors hover:bg-danger/[0.04]">
+                <a
+                  href={`tel:${r.number}`}
+                  className="block min-h-[44px] px-4 py-3.5 transition-colors hover:bg-danger/[0.04]"
+                >
                   <div className="num text-danger">{r.number}</div>
                   <div className="caption mt-0.5 truncate">{r.name}</div>
                 </a>
@@ -445,12 +456,23 @@ function ClosingCta() {
   const { profile } = useStore()
   const { actions } = useActions()
   const nav = useNavigate()
+  const [confirm, setConfirm] = useState(false)
+  const enterDemo = async () => {
+    setConfirm(false)
+    await actions.loadDemo()
+    nav('/dashboard')
+  }
   return (
     <Section className="py-16 sm:py-24">
-      <motion.div
-        {...inView()}
-        className="sheet-lg sheet-focal px-6 py-12 text-center sm:px-12 sm:py-16"
-      >
+      <ConfirmModal
+        open={confirm}
+        onClose={() => setConfirm(false)}
+        onConfirm={enterDemo}
+        title="Replace your account with the demo?"
+        body="This device's progress and account will be replaced by the demo data. You can't undo this."
+        confirmLabel="Replace with demo"
+      />
+      <motion.div {...inView()} className="sheet-lg sheet-focal px-6 py-12 text-center sm:px-12 sm:py-16">
         <h2 className="t1 mx-auto max-w-[22ch]">
           Your first scenario is <span className="text-gradient-xp">ninety seconds</span> away.
         </h2>
@@ -465,10 +487,7 @@ function ClosingCta() {
             variant="ghost"
             size="lg"
             icon={Zap}
-            onClick={async () => {
-              await actions.loadDemo()
-              nav('/dashboard')
-            }}
+            onClick={() => (profile && !profile.isDemo ? setConfirm(true) : enterDemo())}
           >
             Try demo mode
           </Button>
@@ -493,8 +512,8 @@ function SiteFooter() {
             <span className="t3 tracking-tight">LawLink</span>
           </div>
           <p className="caption mt-3">
-            A gamified legal literacy platform for Indian students. Educational content with sources.
-            Helplines: 112 emergency · 1930 cyber fraud · 1915 consumer · 1091 and 181 women.
+            A gamified legal literacy platform for Indian students. Educational content with sources. Helplines: 112
+            emergency · 1930 cyber fraud · 1915 consumer · 1091 and 181 women.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-x-10 gap-y-2">
@@ -541,8 +560,8 @@ export default function Landing() {
                 Level Up Your <span className="text-gradient-xp whitespace-nowrap">Legal IQ.</span>
               </h1>
               <p className="lead measure mt-5">
-                Indian law is not the problem. It is just written for lawyers. LawLink turns it into
-                quick, playable situations from your own life, then shows you exactly what the law says.
+                Indian law is not the problem. It is just written for lawyers. LawLink turns it into quick, playable
+                situations from your own life, then shows you exactly what the law says.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button variant="primary" size="lg" icon={Play} onClick={() => nav(profile ? '/dashboard' : '/login')}>

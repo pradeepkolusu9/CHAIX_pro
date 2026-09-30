@@ -7,7 +7,7 @@
  * reward/reveal refs, per-module state reset, locked / not-found states.
  */
 import { useState, useEffect, useRef } from 'react'
-import { Link, useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ArrowLeft,
@@ -186,15 +186,39 @@ function Verdict({ right, label, sub }) {
   )
 }
 
-/* Which kind of message does this scenario show? null = not a message. */
-const CHANNELS = [
-  { re: /whatsapp/i, name: 'WhatsApp', icon: MessageSquareText },
-  { re: /\b(sms|text message|texts?)\b/i, name: 'SMS', icon: MessageSquareText },
-  { re: /e-?mail|inbox/i, name: 'Email', icon: Mail },
-  { re: /\b(call|calls|called|calling|phone rings)\b/i, name: 'Incoming call', icon: Phone },
-  { re: /\b(notification|message|dm|pop-?up)\b/i, name: 'Notification', icon: BellRing },
-]
-const channelOf = (text) => CHANNELS.find((c) => c.re.test(text)) || null
+/* Which kind of message does this scenario show? null = not a message.
+   Opt-in: `sc.channel` ('sms'|'whatsapp'|'email'|'call'|'notification'). Until the data
+   carries it, fall back to a strict heuristic: the text must OPEN with the message
+   ("You get an SMS…", "A message arrives…"), never merely mention one. */
+const CHANNELS = {
+  sms: { name: 'SMS', icon: MessageSquareText },
+  whatsapp: { name: 'WhatsApp', icon: MessageSquareText },
+  email: { name: 'Email', icon: Mail },
+  call: { name: 'Incoming call', icon: Phone },
+  notification: { name: 'Notification', icon: BellRing },
+}
+const OPENER =
+  /^(?:at [\d:.]+\s?[ap]m,? )?(?:you (?:get|got|receive|received) an? (sms|text message|text|message|email|e-mail|whatsapp message|whatsapp|call)\b|an? (sms|text message|whatsapp message|message|email|e-mail) (?:arrives|comes in|pops up)\b)/i
+function channelOf(sc) {
+  let key = CHANNELS[sc.channel] ? sc.channel : null
+  if (!key) {
+    const m = sc.situation?.trim().match(OPENER)
+    const w = (m?.[1] || m?.[2] || '').toLowerCase()
+    if (w) {
+      key = /whatsapp/.test(w) ? 'whatsapp' : /mail/.test(w) ? 'email' : w === 'call' ? 'call' : /sms|text/.test(w) ? 'sms' : 'notification'
+      if (key === 'notification' && /whatsapp/i.test(sc.situation.slice(0, 160))) key = 'whatsapp'
+    }
+  }
+  return key ? { key, ...CHANNELS[key] } : null
+}
+/** Sender as named in the text: from "Name", else "from your <relation>'s number". */
+function senderOf(text, ch) {
+  const q = text.match(/from\s+["\u201c]([^"\u201d]{1,40})["\u201d]/i)
+  if (q) return q[1]
+  const rel = text.match(/from (your [a-z ]{2,30}?)(?:'s|\u2019s) (?:number|account|email)/i)
+  if (rel) return rel[1].charAt(0).toUpperCase() + rel[1].slice(1)
+  return ch.key === 'call' ? 'Unknown caller' : 'Unknown sender'
+}
 
 /** The situation as a phone screen: the scam message, as it would look. */
 function PhoneMock({ ch, text, stamp }) {
@@ -208,7 +232,7 @@ function PhoneMock({ ch, text, stamp }) {
           <IconBadge icon={Icon} tone="electric" size="xs" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-[13px] font-bold leading-tight text-fg">
-              {ch.name === 'Email' ? 'Unknown sender' : ch.name === 'Incoming call' ? 'Unknown caller' : 'Unknown sender'}
+              {senderOf(text, ch)}
             </p>
             <p className="text-micro text-fg-dim">{ch.name}</p>
           </div>
@@ -311,6 +335,13 @@ function Overview({ mod }) {
 /* ================================================================= lessons */
 function Lessons({ mod, stats }) {
   const { actions } = useActions()
+  const say = useAnnounce()
+  // Marking read unmounts the focused button: hand focus to the lesson itself.
+  const markRead = (l) => {
+    actions.readLesson(mod.id, l.id)
+    say(`Lesson marked as read. +${XP_RULES.lessonRead} XP.`)
+    requestAnimationFrame(() => document.getElementById(`lesson-${l.id}`)?.focus({ preventScroll: true }))
+  }
   const rec = stats || {}
   const left = mod.lessons.filter((l) => !rec.lessonIds?.includes(l.id)).length
 
@@ -328,7 +359,7 @@ function Lessons({ mod, stats }) {
         {mod.lessons.map((l, n) => {
           const read = rec.lessonIds?.includes(l.id)
           return (
-            <article key={l.id}>
+            <article key={l.id} id={`lesson-${l.id}`} tabIndex={-1} className="scroll-mt-28 focus:outline-none">
               <div className="mb-4 flex items-start gap-3.5">
                 <span className="tile tile-electric num h-10 w-10 rounded-xl">{n + 1}</span>
                 <div className="min-w-0 flex-1 pt-1">
@@ -354,7 +385,7 @@ function Lessons({ mod, stats }) {
                 <Button
                   variant="ghost"
                   className="mt-5"
-                  onClick={() => actions.readLesson(mod.id, l.id)}
+                  onClick={() => markRead(l)}
                   iconRight={ArrowRight}
                 >
                   Mark as read · +{XP_RULES.lessonRead} XP
@@ -369,18 +400,27 @@ function Lessons({ mod, stats }) {
 }
 
 /* ============================================================== scenarios */
-function Scenarios({ mod, stats, i, jump, picked, setPicked, xpHere, setXpHere, onBanked, revealRef, rewardRef }) {
+function Scenarios(props) {
+  if (!props.mod.scenarios?.length) {
+    return <p className="copy">This module has no scenarios yet.</p>
+  }
+  return <ScenarioPlayer {...props} />
+}
+
+function ScenarioPlayer({ mod, stats, i, jump, setTab, picked, setPicked, xpHere, setXpHere, onBanked, revealRef, rewardRef }) {
   const { actions } = useActions()
   const reduce = useReducedMotionPref()
   const [busy, setBusy] = useState(false)
   const say = useAnnounce()
+  // Was it already cleared BEFORE this pick? `done` flips true the moment the store pays.
+  const doneAtPick = useRef(false)
 
   const sc = mod.scenarios[i]
   const done = Boolean(stats.scenarioIds?.includes(sc.id))
   const revealed = picked !== null
   const right = picked === sc.correct
   const last = i === mod.scenarios.length - 1
-  const ch = channelOf(sc.situation)
+  const ch = channelOf(sc)
 
   /* The verdict is invisible to a screen reader, and answering unmounts the
      focused option button. Announce the outcome and move focus to the reveal. */
@@ -388,15 +428,18 @@ function Scenarios({ mod, stats, i, jump, picked, setPicked, xpHere, setXpHere, 
     if (!revealed || !picked) return
     say(
       `${right ? 'Correct.' : 'Not correct.'} ${
-        done ? 'No XP, you already cleared this one.' : `+${XP_RULES.scenario} XP.`
+        doneAtPick.current ? 'No XP, you already cleared this one.' : `+${XP_RULES.scenario} XP.`
       } ${sc.why}`,
     )
-    const id = requestAnimationFrame(() => revealRef.current?.focus())
+    const id = requestAnimationFrame(() => revealRef.current?.focus({ preventScroll: true }))
     return () => cancelAnimationFrame(id)
-  }, [revealed, picked, right, done, sc, say, revealRef])
+    // `done` is deliberately not a dep: it flips when the store pays, which must not re-announce.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealed, picked])
 
   const answer = async (optId) => {
     if (revealed || busy) return
+    doneAtPick.current = done
     setPicked(optId)
     if (done) return
     setBusy(true)
@@ -414,7 +457,7 @@ function Scenarios({ mod, stats, i, jump, picked, setPicked, xpHere, setXpHere, 
     setXpHere(0)
   }
 
-  const next = () => jump((i + 1) % mod.scenarios.length)
+  const next = () => (last ? setTab('quiz') : jump(i + 1))
 
   const dur = (n) => (reduce ? 0.001 : n)
 
@@ -422,10 +465,12 @@ function Scenarios({ mod, stats, i, jump, picked, setPicked, xpHere, setXpHere, 
      user scrolls with the story. Skipped under reduced motion. */
   useEffect(() => {
     if (!revealed || reduce) return
-    const id = requestAnimationFrame(() =>
-      rewardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }),
+    // wait out the reveal's height animation (~300ms) so we aim at its final position
+    const id = setTimeout(
+      () => rewardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }),
+      350,
     )
-    return () => cancelAnimationFrame(id)
+    return () => clearTimeout(id)
   }, [revealed, reduce, rewardRef])
 
   return (
@@ -603,7 +648,7 @@ function Scenarios({ mod, stats, i, jump, picked, setPicked, xpHere, setXpHere, 
                 initial={{ opacity: 0, y: reduce ? 0 : 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: dur(BEAT.xp), duration: dur(0.28), ease: EASE.out }}
-                className="mt-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-4 border-t border-white/[0.08] pt-6"
+                className="mt-8 flex scroll-mb-28 flex-wrap items-center justify-between gap-x-4 gap-y-4 border-t border-white/[0.08] pt-6"
               >
                 <div className="flex items-center gap-3">
                   <motion.span
@@ -673,8 +718,16 @@ function ScoreRing({ pct, correct, total, reduce }) {
   )
 }
 
-function Quiz({ mod, stats }) {
+function Quiz(props) {
+  if (!props.mod.quiz?.length) return <p className="copy">This module has no quiz yet.</p>
+  return <QuizRun {...props} />
+}
+
+function QuizRun({ mod, stats }) {
   const { actions } = useActions()
+  const say = useAnnounce()
+  const verdictRef = useRef(null)
+  const [result, setResult] = useState(null) // what completeQuiz reported for this attempt
   const reduce = useReducedMotionPref()
   const total = mod.quiz.length
   const [i, setI] = useState(0)
@@ -691,6 +744,17 @@ function Quiz({ mod, stats }) {
     setPicked(optIdx)
   }
 
+  /* Answering swaps the focused button for a div, dropping focus to <body>:
+     announce the verdict and keep focus inside the question. */
+  useEffect(() => {
+    if (picked === null || !q) return undefined
+    const ok = picked === q.correct
+    say(`${ok ? 'Correct.' : 'Incorrect.'} ${q.why}`)
+    const id = requestAnimationFrame(() => verdictRef.current?.focus({ preventScroll: true }))
+    return () => cancelAnimationFrame(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [picked])
+
   const nextQ = async () => {
     const nextAnswers = [...answers, picked === q.correct]
     setAnswers(nextAnswers)
@@ -702,7 +766,7 @@ function Quiz({ mod, stats }) {
     setBusy(true)
     try {
       const score = nextAnswers.filter(Boolean).length
-      await actions.completeQuiz(mod.id, score, total)
+      setResult((await actions.completeQuiz(mod.id, score, total)) || null)
       setDone(true)
     } finally {
       setBusy(false)
@@ -713,12 +777,14 @@ function Quiz({ mod, stats }) {
     setI(0)
     setPicked(null)
     setAnswers([])
+    setResult(null)
     setDone(false)
   }
 
   if (done) {
-    const gained = correct * XP_RULES.quizCorrect
-    const isBest = correct >= (stats.quizBest || 0)
+    // Straight from the store: 0 on retakes, topic bonus included when newly completed.
+    const gained = result?.xpGained ?? 0
+    const isBest = Boolean(result?.wasDone) && correct > (result?.prevBest ?? 0)
     const stars = pct >= 90 ? 3 : pct >= 60 ? 2 : pct > 0 ? 1 : 0
     return (
       <motion.div
@@ -756,14 +822,14 @@ function Quiz({ mod, stats }) {
         </h2>
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
           <Pill tone="xp" icon={Sparkles}>
-            +{gained} XP earned
+            {gained > 0 ? `+${gained} XP earned` : 'No XP on a retake'}
           </Pill>
-          {isBest && stats.quizTaken > 1 && (
+          {isBest && (
             <Pill tone="good" icon={Trophy}>
               New personal best
             </Pill>
           )}
-          {pct >= 80 && !stats.completed && (
+          {result?.newlyCompleted && (
             <Pill tone="good" icon={Check}>
               Module completed
             </Pill>
@@ -841,10 +907,12 @@ function Quiz({ mod, stats }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: reduce ? 0.001 : 0.3, ease: EASE.out }}
               >
-                <Verdict
-                  right={isRight}
-                  label={isRight ? `Correct · +${XP_RULES.quizCorrect} XP` : 'Incorrect'}
-                />
+                <div ref={verdictRef} tabIndex={-1} className="focus:outline-none">
+                  <Verdict
+                    right={isRight}
+                    label={isRight && !stats.quizDone ? `Correct · +${XP_RULES.quizCorrect} XP` : isRight ? 'Correct' : 'Incorrect'}
+                  />
+                </div>
                 <div className="inset p-4 sm:p-5">
                   <p className="eyebrow mb-1.5">Why</p>
                   <p className="max-w-[64ch] font-body text-[16px] leading-[1.7] text-fg">{q.why}</p>
@@ -903,8 +971,8 @@ function Steps({ mod, stats, i, jump }) {
 
 function Rail({ mod, stats, level, i, jump, picked, banked }) {
   const sc = mod.scenarios[i]
-  const pickedOpt = picked ? sc.options.find((o) => o.id === picked) : null
-  const pct = Math.round((stats.scenariosDone / mod.scenarios.length) * 100)
+  const pickedOpt = picked && sc?.options ? sc.options.find((o) => o.id === picked) : null
+  const pct = mod.scenarios.length ? Math.round((stats.scenariosDone / mod.scenarios.length) * 100) : 0
 
   return (
     <aside
@@ -979,9 +1047,10 @@ function Rail({ mod, stats, level, i, jump, picked, banked }) {
 
 /** Mobile: a slim sticky bar in place of the rail. */
 function MobileBar({ mod, stats, i, jump, banked }) {
-  const pct = Math.round((stats.scenariosDone / mod.scenarios.length) * 100)
+  const pct = mod.scenarios.length ? Math.round((stats.scenariosDone / mod.scenarios.length) * 100) : 0
+  // top = TopBar height (~4.3rem: py-3 + controls) + 0.5rem, so it never slides under the header
   return (
-    <div className="sheet sticky top-2 z-20 mb-6 px-3.5 py-2.5 xl:hidden">
+    <div className="sheet sticky top-[calc(4.3rem+0.5rem)] z-20 mb-6 px-3.5 py-2.5 xl:hidden">
       <div className="flex items-center gap-3">
         <ModuleTile mod={mod} className="h-8 w-8 rounded-[10px]" size="xs" />
         <div className="min-w-0 flex-1">
@@ -1011,10 +1080,20 @@ const TABS = (mod) => [
 
 /** Segmented control with counts. */
 function Segmented({ tabs, value, onChange }) {
+  const onKeyDown = (e) => {
+    const at = tabs.findIndex((t) => t.key === value)
+    const to = { ArrowRight: at + 1, ArrowLeft: at - 1, Home: 0, End: tabs.length - 1 }[e.key]
+    if (to === undefined) return
+    e.preventDefault()
+    const k = tabs[(to + tabs.length) % tabs.length].key
+    onChange(k)
+    requestAnimationFrame(() => document.getElementById(`tab-${k}`)?.focus())
+  }
   return (
     <div
       role="tablist"
       aria-label="Module sections"
+      onKeyDown={onKeyDown}
       className="no-scrollbar -mx-1 flex min-w-0 gap-1 overflow-x-auto rounded-2xl bg-surface-3 p-1"
     >
       {tabs.map((t) => {
@@ -1022,8 +1101,12 @@ function Segmented({ tabs, value, onChange }) {
         return (
           <button
             key={t.key}
+            id={`tab-${t.key}`}
             role="tab"
+            type="button"
             aria-selected={active}
+            aria-controls={`panel-${t.key}`}
+            tabIndex={active ? 0 : -1}
             onClick={() => onChange(t.key)}
             className={`relative flex min-h-[44px] flex-1 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 font-sans text-body font-semibold transition-colors ${
               active ? 'text-electric-300' : 'text-fg-dim hover:text-fg'
@@ -1042,7 +1125,7 @@ function Segmented({ tabs, value, onChange }) {
               {t.count != null && (
                 <span
                   className={`tnum rounded-full px-1.5 text-micro font-bold ${
-                    active ? 'bg-electric-500/12' : 'bg-white/[0.07]'
+                    active ? 'bg-electric-500/[0.12]' : 'bg-white/[0.07]'
                   }`}
                 >
                   {t.count}
@@ -1067,13 +1150,18 @@ export default function Lesson() {
   const { moduleId } = useParams()
   const [params, setParams] = useSearchParams()
   const nav = useNavigate()
+  const location = useLocation()
   const { stats, unlocked, level } = useStore()
   const mod = getModuleById(moduleId)
   const s = stats[moduleId]
 
   const rawTab = params.get('tab')
   const tab = ['intro', 'lessons', 'scenario', 'quiz'].includes(rawTab) ? rawTab : 'intro'
-  const setTab = (t) => setParams(t === 'intro' ? {} : { tab: t }, { replace: true })
+  const setTab = (t) => {
+    setPicked(null)
+    setXpHere(0)
+    setParams(t === 'intro' ? {} : { tab: t }, { replace: true })
+  }
 
   /* Scenario state lives here, not in the child, because the rail reads it. */
   const [i, setI] = useState(() => firstUndone(mod, s))
@@ -1132,16 +1220,25 @@ export default function Lesson() {
   }
 
   const next = nextModule(mod.id)
+  const ic = Math.min(i, Math.max(0, mod.scenarios.length - 1)) // never index past a shorter module
+  const lessonXp = mod.lessons.length * XP_RULES.lessonRead
 
   return (
     <div className="mx-auto w-full max-w-[1180px]">
       {/* ------------------------------------------------ module header */}
       <header>
         <nav aria-label="Breadcrumb" className="mb-5 flex items-center gap-1.5 text-caption text-fg-dim">
-          <button onClick={() => nav(-1)} className="btn btn-quiet btn-sm -ml-3 shrink-0" aria-label="Back">
-            <ArrowLeft size={14} />
-            Back
-          </button>
+          {location.key === 'default' ? (
+            <Link to="/learn" className="btn btn-quiet btn-sm -ml-3 shrink-0" aria-label="Back to Learn">
+              <ArrowLeft size={14} />
+              Back
+            </Link>
+          ) : (
+            <button onClick={() => nav(-1)} className="btn btn-quiet btn-sm -ml-3 shrink-0" aria-label="Back">
+              <ArrowLeft size={14} />
+              Back
+            </button>
+          )}
           <Link to="/learn" className="hover:text-electric-300">
             Learn
           </Link>
@@ -1161,7 +1258,7 @@ export default function Lesson() {
                 </Pill>
               )}
               <Pill tone="xp" icon={Zap}>
-                {formatNumber(s.xpTotal)} XP here
+                {formatNumber(s.xpTotal + lessonXp)} XP here
               </Pill>
             </div>
           </div>
@@ -1172,14 +1269,19 @@ export default function Lesson() {
         </div>
       </header>
 
-      <MobileBar mod={mod} stats={s} i={i} jump={jump} banked={banked} />
+      {tab === 'scenario' && mod.scenarios.length > 0 && (
+        <MobileBar mod={mod} stats={s} i={ic} jump={jump} banked={banked} />
+      )}
 
       {/* ------------------------------------- reading column + sticky rail */}
       <div className="flex flex-col gap-10 xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start xl:gap-12">
         <div className="min-w-0">
           <AnimatePresence mode="wait">
             <motion.div
-              key={tab}
+              key={`${mod.id}-${tab}`}
+              role="tabpanel"
+              id={`panel-${tab}`}
+              aria-labelledby={`tab-${tab}`}
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
@@ -1191,8 +1293,9 @@ export default function Lesson() {
                 <Scenarios
                   mod={mod}
                   stats={s}
-                  i={i}
+                  i={ic}
                   jump={jump}
+                  setTab={setTab}
                   picked={picked}
                   setPicked={setPicked}
                   xpHere={xpHere}
@@ -1222,7 +1325,7 @@ export default function Lesson() {
           )}
         </div>
 
-        <Rail mod={mod} stats={s} level={level} i={i} jump={jump} picked={picked} banked={banked} />
+        <Rail mod={mod} stats={s} level={level} i={ic} jump={jump} picked={picked} banked={banked} />
       </div>
     </div>
   )

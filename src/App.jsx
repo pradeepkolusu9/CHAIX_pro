@@ -1,13 +1,12 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { MotionConfig } from 'framer-motion'
 import { StoreProvider, useStore } from './lib/store.jsx'
-import { AppShell } from './components/layout/AppShell.jsx'
-import { PublicShell } from './components/layout/AppShell.jsx'
+import { AppShell, PublicShell, ContentSkeleton } from './components/layout/AppShell.jsx'
+import { titleFor } from './components/layout/nav.js'
 import { EffectsHost, ToastHost } from './components/fx/Rewards.jsx'
 import { ErrorBoundary } from './components/ErrorBoundary.jsx'
 import { AnnouncerProvider } from './lib/announce.jsx'
-import { Skeleton } from './components/ui/index.jsx'
 
 /**
  * Route-level code splitting. Every page shipped in the main bundle before,
@@ -35,19 +34,8 @@ const NotFound = lazy(() => import('./pages/NotFound.jsx'))
 function RequireAuth({ children }) {
   const { profile, ready } = useStore()
   const loc = useLocation()
-  if (!ready) {
-    return (
-      <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 py-10 sm:px-6">
-        <Skeleton className="h-9 w-64" />
-        <Skeleton className="h-56 w-full rounded-3xl" />
-        <div className="grid gap-4 md:grid-cols-2">
-          <Skeleton className="h-40" />
-          <Skeleton className="h-40" />
-        </div>
-      </div>
-    )
-  }
-  if (!profile) return <Navigate to="/login" replace state={{ from: loc.pathname }} />
+  if (!ready) return <ContentSkeleton />
+  if (!profile) return <Navigate to="/login" replace state={{ from: loc.pathname + loc.search + loc.hash }} />
   return children
 }
 
@@ -55,26 +43,41 @@ function Public({ children }) {
   return <PublicShell>{children}</PublicShell>
 }
 
-/** Chunk-load placeholder. Deliberately quiet — a blank flash reads as broken. */
-function RouteFallback() {
-  return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-4 px-4 py-10 sm:px-6">
-      <Skeleton className="h-9 w-64" />
-      <Skeleton className="h-56 w-full rounded-3xl" />
-      <div className="grid gap-4 md:grid-cols-2">
-        <Skeleton className="h-40" />
-        <Skeleton className="h-40" />
-      </div>
-    </div>
-  )
-}
-
-/** Scroll to top on navigation, and restore focus for keyboard/screen-reader users. */
+/**
+ * Per navigation: document title, then either scroll to the #hash target or to the
+ * top, and move focus to <main> so keyboard/screen-reader users start at the new
+ * page instead of on the link they just used. The first render is left alone.
+ */
 function RouteEffects() {
-  const loc = useLocation()
+  const { pathname, hash } = useLocation()
+  const first = useRef(true)
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' })
-  }, [loc.pathname])
+    document.title = titleFor(pathname)
+    const fromLoad = first.current
+    first.current = false
+    if (!fromLoad) {
+      const main = document.querySelector('main')
+      if (main) {
+        main.setAttribute('tabindex', '-1')
+        main.focus({ preventScroll: true })
+      }
+    }
+    const id = decodeURIComponent(hash.slice(1))
+    if (!id) {
+      window.scrollTo({ top: 0, behavior: 'instant' })
+      return undefined
+    }
+    // the target may live in a lazy chunk that has not rendered yet — retry briefly
+    let tries = 0
+    let t
+    const seek = () => {
+      const el = document.getElementById(id)
+      if (el) el.scrollIntoView({ block: 'start' })
+      else if ((tries += 1) < 30) t = setTimeout(seek, 50)
+    }
+    seek()
+    return () => clearTimeout(t)
+  }, [pathname, hash])
   return null
 }
 
@@ -88,7 +91,7 @@ export default function App() {
           <StoreProvider>
           <BrowserRouter>
             <RouteEffects />
-            <Suspense fallback={<RouteFallback />}>
+            <Suspense fallback={<ContentSkeleton />}>
               <Routes>
                 {/* public marketing + auth */}
                 <Route path="/" element={<Public><Landing /></Public>} />

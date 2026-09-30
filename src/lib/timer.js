@@ -61,5 +61,6 @@ export const TONE_TOKEN = {
 
 export const formatClock = (secondsLeft) => {
   const s = Math.max(0, Math.ceil(secondsLeft))
-  return `00:${String(s).padStart(2, '0')}`
+  const p2 = (n) => String(n).padStart(2, '0')
+  return `${p2(Math.floor(s / 60))}:${p2(s % 60)}`
 }

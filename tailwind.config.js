@@ -131,6 +131,10 @@ export default {
           '0%,100%': { transform: 'translateY(0) scale(1)' },
           '50%': { transform: 'translateY(-1.5px) scale(1.06)' },
         },
+        fadeIn: {
+          from: { opacity: 0 },
+          to: { opacity: 1 },
+        },
         shimmer: {
           '0%': { backgroundPosition: '-500px 0' },
           '100%': { backgroundPosition: '500px 0' },

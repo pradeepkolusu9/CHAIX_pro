@@ -9,6 +9,7 @@
  *   - a failed first quiz permanently blocked a module from completing
  */
 import { dayKeyList, todayKey } from './dates.js'
+import { LEVELS } from './gamification.js'
 
 /** 'YYYY-MM-DD' for `n` days before `from`. */
 const keyOffset = (from, n) => {
@@ -46,11 +47,17 @@ export function touchStreak(streak = {}, today = todayKey()) {
   return { streak: { current, longest, lastActive: today, activity }, milestone }
 }
 
-/** Decay a streak for display without recording an activity event. */
+/**
+ * Decay a streak for display without recording an activity event.
+ * Returns the SAME object when nothing changes so callers can skip a state write.
+ */
 export function recomputeStreak(streak = {}, today = todayKey()) {
-  if (!streak.lastActive) return { ...streak, current: 0, longest: Math.max(streak.longest || 0, 0) }
-  if (streak.lastActive === today || streak.lastActive === keyOffset(today, -1)) return streak
-  return { ...streak, current: 0, longest: Math.max(streak.longest || 0, 0) }
+  const alive =
+    streak.lastActive && (streak.lastActive === today || streak.lastActive === keyOffset(today, -1))
+  if (alive) return streak
+  const longest = Math.max(streak.longest || 0, 0)
+  if (streak.current === 0 && streak.longest === longest) return streak
+  return { ...streak, current: 0, longest }
 }
 
 /**
@@ -76,21 +83,13 @@ export function sixtySecondXp({ clearedToday, dailyCap = SIXTY_SECOND_DAILY_CAP 
 }
 
 /**
- * What a level actually unlocks. This used to claim modules open at certain levels,
- * which contradicted the journey: modules unlock by completing the previous one,
- * not by level. Now the copy only ever describes level-scoped things.
+ * Level-up copy. A level is a title and nothing more (badges and modules are not
+ * gated by level), so the copy states only that and the real next mission.
  */
 export function unlocksForLevel(level, { nextModuleName = null } = {}) {
-  const base = {
-    2: ['Daily Challenge difficulty step unlocked', 'Streak bonus tracking begins'],
-    3: ['Quick Learner badge track unlocked'],
-    4: ['Achievements track unlocked'],
-    5: ['🛡 Workplace Rights badge unlocked', 'Justice Navigator title track'],
-    6: ['Law Guardian title unlocked'],
-    7: ['Justice Navigator title unlocked'],
-    8: ['🏆 Legal Master title unlocked', 'Every badge in the collection unlocked'],
-  }
-  const list = [...(base[level] || [])]
+  const name = LEVELS.find((l) => l.level === level)?.name
+  const list = name ? [`You are now a ${name}`] : []
+  if (level >= LEVELS.length) list.push('You have reached the highest level')
   if (nextModuleName) list.push(`${nextModuleName} is your next mission`)
   return list
 }

@@ -154,7 +154,7 @@ function NodeCard({ r }) {
       : 'sheet p-5'
 
   return (
-    <div className={`group transition-transform duration-300 lg:hover:-translate-y-0.5 ${shell}`} tabIndex={-1}>
+    <div className={`group transition-transform duration-300 lg:hover:-translate-y-0.5 ${shell}`} tabIndex={0}>
       <div className="flex flex-wrap items-center gap-2">
         <span className="eyebrow">Mission {String(r.index).padStart(2, '0')}</span>
         {state === 'current' && (
@@ -197,11 +197,10 @@ function NodeCard({ r }) {
         <span className="chip">{m.difficulty}</span>
       </div>
 
-      {/* expands on hover / keyboard focus on desktop; always open on touch layouts */}
+      {/* Open by default (touch, mobile, iPad). Only hover-capable desktops collapse it,
+          and it re-opens on hover or keyboard focus inside the card. */}
       <div
-        className={`grid grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out lg:grid-rows-[0fr] lg:group-focus-within:grid-rows-[1fr] lg:group-hover:grid-rows-[1fr] ${
-          state === 'current' ? '' : 'max-lg:hidden'
-        }`}
+        className="grid grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out lg:[@media(hover:hover)]:grid-rows-[0fr] lg:[@media(hover:hover)]:group-focus-within:grid-rows-[1fr] lg:[@media(hover:hover)]:group-hover:grid-rows-[1fr]"
       >
         <div className="min-h-0 overflow-hidden">
           <div className="pt-4">

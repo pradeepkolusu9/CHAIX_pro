@@ -24,6 +24,13 @@ export class ErrorBoundary extends Component {
     if (live) live.textContent = `This screen failed to load. ${String(error?.message || error)}`
   }
 
+  /** After a redeploy the old hashed chunk is gone: retrying in place can never work, so reload. */
+  retry = () => {
+    const msg = String(this.state.error?.message || this.state.error)
+    if (/dynamically imported module|Loading chunk|Failed to fetch dynamically/i.test(msg)) window.location.reload()
+    else this.setState({ error: null })
+  }
+
   render() {
     const { error } = this.state
     if (!error) return this.props.children
@@ -34,7 +41,7 @@ export class ErrorBoundary extends Component {
             when the design system moved to tonal sheets, so this rendered with
             no background at all. */}
         <div className="overlay-panel w-full max-w-md rounded-2xl p-7 text-center">
-          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-danger/12 ring-1 ring-inset ring-danger/25">
+          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-danger/[0.12] ring-1 ring-inset ring-danger/25">
             <AlertTriangle size={22} className="text-danger" strokeWidth={2.2} />
           </div>
           <h1 className="text-lg font-extrabold">This screen hit a snag</h1>
@@ -46,7 +53,7 @@ export class ErrorBoundary extends Component {
             {String(error?.message || error)}
           </p>
           <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-            <button onClick={() => this.setState({ error: null })} className="btn btn-primary flex-1">
+            <button onClick={this.retry} className="btn btn-primary flex-1">
               <RotateCcw size={15} />
               Try again
             </button>

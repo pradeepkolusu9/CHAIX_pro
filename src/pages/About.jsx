@@ -98,8 +98,8 @@ const METHOD = [
   },
   {
     icon: CalendarClock,
-    title: 'A "last verified" date on everything',
-    body: `Laws get amended, portals get rebuilt and helplines get renumbered. Each module and each resource carries the date it was last checked against its source — currently ${VERIFIED_ON} — so a stale claim is visible rather than hidden.`,
+    title: 'A "drafted on" date on everything',
+    body: `Laws get amended, portals get rebuilt and helplines get renumbered. Each module and each resource carries the date it was drafted (currently ${VERIFIED_ON}) and links to its source. The content has not yet been reviewed by a lawyer, so treat it as awareness, not advice.`,
   },
   {
     icon: ShieldCheck,
@@ -295,7 +295,7 @@ export default function About() {
             <div className="eyebrow mb-2">Helplines used</div>
             <h2 className="t1">Every number, with its source</h2>
             <p className="copy mt-3 max-w-[56ch]">
-              Checked against each operator&apos;s own publication on {VERIFIED_ON}. Re-check before a
+              Taken from each operator&apos;s own publication (drafted {VERIFIED_ON}). Re-check before a
               real emergency.
             </p>
           </div>
@@ -407,9 +407,10 @@ export default function About() {
               </Pill>
             </div>
             <p className="caption mt-3">
-              This build is running on {backend.toLowerCase()}, so the data never leaves your device. If
-              a Supabase project is configured the same record is written to one private row keyed to
-              this browser, with automatic fallback to local storage.
+              This build is running on {backend.toLowerCase()}.{' '}
+              {cloud
+                ? 'Your progress is written to one private row keyed to this browser, with automatic fallback to local storage.'
+                : 'Your progress and account data stay on this device. If a Supabase project is configured, the same record is written to one private row keyed to this browser, with automatic fallback to local storage.'}
             </p>
           </Card>
 

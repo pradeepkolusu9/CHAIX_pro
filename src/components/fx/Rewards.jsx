@@ -12,7 +12,7 @@
  *     never run on a mark.
  *   - No infinite loop lives in this file. None of the four is allowed one.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Flame, X, Check, PartyPopper } from 'lucide-react'
 import { useActions } from '../../lib/store.jsx'
@@ -22,6 +22,7 @@ import { levelNumber } from '../../lib/gamification.js'
 import { formatNumber } from '../../lib/dates.js'
 import { Button } from '../ui/Button.jsx'
 import { Sigil } from '../ui/Sigil.jsx'
+import { useDialog } from '../ui/useDialog.js'
 
 const ease = [0.16, 1, 0.3, 1]
 const press = [0.2, 0, 0, 1]
@@ -62,6 +63,8 @@ function LevelUpModal({ effect, onClose }) {
   const { parts, fire } = useBurst(2600)
   const to = effect.to
   const btnRef = useRef(null)
+  const panel = useDialog({ open: true, onClose })
+  const titleId = useId()
 
   useEffect(() => {
     /* 420ms — burst one, from the top of the card */
@@ -112,11 +115,16 @@ function LevelUpModal({ effect, onClose }) {
 
       {/* overlay-panel is the modal surface; sheet-focal carries the ONE gradient */}
       <motion.div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.18 } }}
         transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-        className="overlay-panel sheet-focal relative z-10 w-full max-w-md overflow-hidden rounded-3xl"
+        className="overlay-panel sheet-focal relative z-10 w-full max-w-md overflow-hidden rounded-3xl outline-none"
       >
         {/* the sweep — one time, over the whole card */}
         <motion.span
@@ -160,6 +168,7 @@ function LevelUpModal({ effect, onClose }) {
 
           {/* beat 3 — the name lands, tracking in */}
           <motion.h2
+            id={titleId}
             initial={{ opacity: 0, y: 10, letterSpacing: '0.22em' }}
             animate={{ opacity: 1, y: 0, letterSpacing: '0.02em' }}
             transition={{ delay: 0.62, duration: 0.42, ease }}
@@ -229,6 +238,8 @@ function LevelUpModal({ effect, onClose }) {
 /* ----------------------------------------------------------- Badge unlock */
 function BadgeUnlock({ effect, onClose }) {
   const b = effect.badge
+  const panel = useDialog({ open: true, onClose })
+  const titleId = useId()
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -238,11 +249,16 @@ function BadgeUnlock({ effect, onClose }) {
     >
       <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-sm" />
       <motion.div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         initial={{ opacity: 0, scale: 0.96, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.18 } }}
         transition={{ type: 'spring', stiffness: 260, damping: 26 }}
-        className="overlay-panel relative z-10 w-full max-w-sm overflow-hidden rounded-3xl"
+        className="overlay-panel relative z-10 w-full max-w-sm overflow-hidden rounded-3xl outline-none"
       >
         <div className="px-7 pb-7 pt-8 text-center">
           <div className="eyebrow mb-4">Badge unlocked</div>
@@ -257,7 +273,9 @@ function BadgeUnlock({ effect, onClose }) {
             <Sigil id={b.id} size={40} />
           </motion.div>
 
-          <h3 className="t2 mt-5">{b.name}</h3>
+          <h3 id={titleId} className="t2 mt-5">
+            {b.name}
+          </h3>
           <p className="copy measure mx-auto mt-1.5">{b.desc}</p>
 
           <Button variant="primary" className="mt-6 w-full" onClick={onClose}>
@@ -277,7 +295,7 @@ function StreakPop({ effect, onClose }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.22, ease }}
-      className="fixed bottom-24 left-1/2 z-[115] w-full max-w-xs -translate-x-1/2 px-4 sm:bottom-8"
+      className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-1/2 z-[115] w-full max-w-xs -translate-x-1/2 px-4 lg:bottom-8"
     >
       <div className="overlay-panel flex items-center gap-3 rounded-2xl p-4">
         <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-warn/[0.12] text-warn">
@@ -301,12 +319,15 @@ function StreakPop({ effect, onClose }) {
 export function EffectsHost() {
   const { effects, dismissEffect } = useActions()
   const say = useAnnounce()
+  const announced = useRef(new Set())
 
   /* Every reward is an invisible-to-sighted state change for a screen reader.
      Without this the whole gamification layer — the thing the product is about —
      is silent. */
   useEffect(() => {
     for (const e of effects) {
+      if (announced.current.has(e.id)) continue
+      announced.current.add(e.id)
       if (e.kind === 'xp') say(`Earned ${e.amount} XP. ${e.reason || ''}`.trim())
       else if (e.kind === 'levelup') say(`Level up. You are now level ${e.to.level}, ${e.to.name}.`)
       else if (e.kind === 'badge') say(`Badge unlocked: ${e.badge.name}. ${e.badge.desc}`)
@@ -355,7 +376,7 @@ export function ToastHost() {
   }, [toasts, say])
 
   return (
-    <div className="pointer-events-none fixed bottom-20 left-1/2 z-[100] w-full max-w-sm -translate-x-1/2 space-y-2 px-4 sm:bottom-6 sm:left-auto sm:right-6 sm:translate-x-0">
+    <div className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-[100] w-full max-w-sm -translate-x-1/2 space-y-2 px-4 lg:bottom-6 lg:left-auto lg:right-6 lg:translate-x-0">
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div

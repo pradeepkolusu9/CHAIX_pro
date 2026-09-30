@@ -34,6 +34,8 @@ export default {
     link: 'https://nalsa.gov.in',
   },
   source: 'https://www.indiacode.nic.in',
+  // needsLawyer: the Uniform Civil Code position (Article 44 vs state-level laws such as Goa's civil code and Uttarakhand's 2024 law) changes; wording kept neutral.
+  // lastVerified is the date this module was AUTHORED (draft). It is NOT a legal sign-off; see src/lib/review.js.
   lastVerified: '2026-09-30',
 
   lessons: [
@@ -43,7 +45,7 @@ export default {
       body: [
         'The right you lean on most is Article 21: no person may be deprived of life or personal liberty except according to law. The Supreme Court read privacy into Article 21 in K.S. Puttaswamy (2017), so your phone, your photographs and your body are yours to defend, not anyone\'s to inspect.',
         'Article 19(1)(a) lets you say, print, broadcast and post what you think. Article 19(1)(g) lets you take up a profession or trade, and it is also subject to reasonable restrictions. Article 21A makes free and compulsory education for children aged 6 to 14 a fundamental right, delivered through the RTE Act, 2009.',
-        'Equality is the floor under all of it. Article 14 gives equality before the law, Article 15 forbids the State from discriminating, and together they are the constitutional basis for reservation in jobs and admissions. Article 24 stops any child under 14 from being put to work in a factory or a hazardous job, and Article 23 abolishes untouchability and forced labour.',
+        'Equality is the floor under all of it. Article 14 gives equality before the law, Article 15 forbids the State from discriminating, and together they are the constitutional basis for reservation in jobs and admissions. Article 24 stops any child under 14 from being put to work in a factory or a hazardous job, Article 17 abolishes untouchability, and Article 23 prohibits forced labour and trafficking.',
       ],
       takeaway: 'Equality, speech, education, life and liberty — and a court to enforce all five.',
     },
@@ -69,7 +71,7 @@ export default {
         { id: 'a', text: 'Accept it quietly and hope for the best next year' },
         { id: 'b', text: 'Post Meera\'s marks online so people can judge it' },
         { id: 'c', text: 'Ask the college for the written eligibility rules' },
-        { id: 'd', text: 'Resubmit Meera\'s form a second time in her name without' },
+        { id: 'd', text: 'Resubmit Meera\'s form a second time in her name without telling anyone' },
       ],
       correct: 'c',
       why: 'Article 15 forbids the State from discriminating against anyone on grounds such as caste, and a State scholarship is exactly the kind of public benefit that article governs. If Meera was screened out because of her category, the equal-treatment guarantee in Article 14 is also engaged. The route that works is a written complaint to the officer running the scheme, with a copy kept and the date noted. Social media creates noise, not an order.',
@@ -97,7 +99,7 @@ export default {
       options: [
         { id: 'a', text: 'Follow the circular quietly — arguing will only get you disciplined' },
         { id: 'b', text: 'Tear down the other students\' posters so nobody gets singled out' },
-        { id: 'c', text: 'Photograph the circular, post it in the class group' },
+        { id: 'c', text: 'Photograph the circular and post it in the class group' },
         { id: 'd', text: 'Ask the principal in writing for the specific rule' },
       ],
       correct: 'd',
@@ -127,7 +129,7 @@ export default {
         { id: 'a', text: 'Pay the ₹2,000 so Nikhil can get a seat and start attending' },
         { id: 'b', text: 'Go with the family to the nearest government school' },
         { id: 'c', text: 'Tell the family to look for a private school instead' },
-        { id: 'd', text: 'Wait until Nikhil turns 14, because the school can no longer' },
+        { id: 'd', text: 'Wait until Nikhil turns 14, because only then can the school admit him' },
       ],
       correct: 'b',
       why: 'Article 21A makes free and compulsory education for children aged 6 to 14 a fundamental right, and the RTE Act, 2009 stops a government school from collecting a donation or refusing a child who lacks a document. Paying quietly makes the practice invisible and teaches the child that his place depends on money. If the head teacher still refuses, the complaint goes in writing to the Block Resource Centre, which exists for exactly this.',
@@ -184,7 +186,7 @@ export default {
       options: [
         { id: 'a', text: 'Keep emailing the education department every week until somebody responds' },
         { id: 'b', text: 'Post photos of the locked blocks on social media and tag the college and the district office' },
-        { id: 'c', text: 'Take the facts and photos to a lawyer and file a public interest petition before the High' },
+        { id: 'c', text: 'Take the facts and photos to a lawyer to file a public interest petition' },
         { id: 'd', text: 'Organise a sit-in outside the school office until the toilets are reopened' },
       ],
       correct: 'c',
@@ -228,7 +230,7 @@ export default {
       options: [
         'A college may restrict speech however it likes, because students sign a code of conduct',
         'Only the central government may restrict speech, so any college circular is void',
-        'Restrictions are allowed but must be reasonable, so a blanket ban on all speech is hard to sustain',
+        'Restrictions are allowed but must be reasonable, so a blanket ban is hard to defend',
         'The circular is valid, but only because it does not mention the word "censorship"',
       ],
       correct: 2,
@@ -240,10 +242,10 @@ export default {
       id: 'q-fr-3',
       question: 'Which statement about the Right to Education in India is correct?',
       options: [
-        'Article 21A, inserted by the 86th Amendment in 2002, makes free and compulsory education for children aged 6 to 14 a fundamental right, delivered through the RTE Act, 2009',
+        'Article 21A makes free, compulsory schooling for children aged 6 to 14 a fundamental right',
         'It was introduced by an Act of Parliament in 1995 and applies from age 3 to 16',
         'It guarantees free university education for every student up to age 18',
-        'It applies only to children in private schools, with the parents paying the fees',
+        'It applies only to children in private schools, and the parents pay the full fees',
       ],
       correct: 0,
       why: 'Article 21A was inserted by the 86th Amendment in 2002, and the RTE Act, 2009 gave it its working machinery by 2010. It covers children aged 6 to 14 and is about school education, not free higher education. It binds government and government-aided schools, so it certainly is not limited to private schools.',
@@ -255,9 +257,9 @@ export default {
       question: 'You want the list of students who received a state scholarship from your college last year. What is the quickest legal route?',
       options: [
         'Pay a local agent who claims he can get official records faster',
-        'File a writ petition in the High Court the same day',
+        'File a writ petition in the High Court on the very first day',
         'Ask the college management committee and request the list as a favour',
-        'Write to the college Public Information Officer under the Right to Information Act',
+        'Apply to the college Public Information Officer under the RTI Act',
       ],
       correct: 3,
       why: 'Money spent from a public scheme, and the list of who received it, is a public record. An application to the Public Information Officer under the Right to Information Act, 2005 is the shortest road and costs only a small fee. A court petition is a much heavier instrument for a simple request, and if a reply is refused you can appeal, then go to the Information Commission.',
@@ -296,7 +298,7 @@ export default {
       id: 'q-fr-7',
       question: 'Why does the Constitution permit reservation in government jobs and in admissions?',
       options: [
-        'Because Articles 15 and 16 allow it — equal treatment is not the same as ignoring an unequal starting point',
+        'Because Articles 15 and 16 allow it, to address unequal starting points',
         'Because Article 19 allows the State to favour whichever group it chooses',
         'Because Article 14 requires every applicant to be scored differently from the others',
         'Because reservation is only a State policy with no constitutional basis behind it',
@@ -308,16 +310,16 @@ export default {
     },
     {
       id: 'q-fr-8',
-      question: 'Does India currently have a Uniform Civil Code for all its citizens?',
+      question: 'Is there a single Uniform Civil Code that applies to all citizens across India?',
       options: [
         'Yes, it has applied in every state since 1950',
         'Yes, but only to citizens living in urban areas',
-        'It is up to each state to bring it in on its own timetable, and most have',
-        'It remains a Directive Principle in Part IV and has not been implemented',
+        'It is left to each state, and almost every state has now enacted its own version',
+        'No single code covers the whole country; Article 44 is a Directive Principle in Part IV',
       ],
       correct: 3,
-      why: 'Article 44 directs the State to secure a Uniform Civil Code, but it sits in Part IV as a Directive Principle. Those guide policy without the same enforceable force as a fundamental right, and the courts have not converted it into one on their own. So the accurate statement is that it is still not implemented, not that it already applies somewhere.',
-      law: 'Constitution of India — Article 44 (Directive Principle, Part IV)',
+      why: 'Article 44 directs the State to endeavour to secure a Uniform Civil Code, but it sits in Part IV as a Directive Principle, which guides policy without the enforceable force of a fundamental right. There is no single code that applies across the whole country. Some states have made their own laws in this area, so check the latest position for your state.',
+      law: 'Constitution of India — Article 44 (Directive Principle, Part IV); state laws on civil codes',
       source: 'https://www.indiacode.nic.in',
     },
   ],

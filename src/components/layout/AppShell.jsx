@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { Suspense, useCallback, useState } from 'react'
 import { Outlet, useLocation, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Sidebar } from './Sidebar.jsx'
 import { TopBar } from './TopBar.jsx'
 import { MobileNav, MobileMenu } from './MobileNav.jsx'
-import { EffectsHost, ToastHost } from '../fx/Rewards.jsx'
+import { Skeleton } from '../ui/index.jsx'
 
 /**
  * Ambient background. Three fixed composited layers, zero scroll repaint:
@@ -22,15 +22,30 @@ function Ambient() {
   )
 }
 
+/** Content-area placeholder: the shell around it never disappears while a chunk loads. */
+export function ContentSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-[1400px] space-y-4 py-2" aria-hidden="true">
+      <Skeleton className="h-9 w-64" />
+      <Skeleton className="h-56 w-full rounded-3xl" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <Skeleton className="h-40" />
+        <Skeleton className="h-40" />
+      </div>
+    </div>
+  )
+}
+
 export function AppShell() {
   const [menu, setMenu] = useState(false)
   const loc = useLocation()
+  const closeMenu = useCallback(() => setMenu(false), [])
 
   return (
     <div className="flex min-h-screen">
       <Ambient />
       <Sidebar />
-      <MobileMenu open={menu} onClose={() => setMenu(false)} />
+      <MobileMenu open={menu} onClose={closeMenu} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar onOpenMenu={() => setMenu(true)} />
@@ -40,12 +55,14 @@ export function AppShell() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-28 pt-5 sm:px-6 sm:pb-12 sm:pt-7"
+          className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-5 outline-none sm:px-6 sm:pt-7 lg:pb-12"
         >
-          <Outlet />
+          <Suspense fallback={<ContentSkeleton />}>
+            <Outlet />
+          </Suspense>
         </motion.main>
 
-        <footer className="px-4 pb-24 pt-8 sm:px-6 sm:pb-8">
+        <footer className="px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-8 sm:px-6 lg:pb-8">
           <div className="mx-auto flex max-w-[1400px] flex-col gap-4 border-t border-white/[0.05] pt-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-xl">
               {/* The single persistent disclaimer instance in the app. Pages may add
@@ -59,10 +76,14 @@ export function AppShell() {
                 <Link to="/about" className="text-electric-300 hover:underline">
                   About &amp; methodology
                 </Link>
-                . In immediate danger call <strong className="text-danger">112</strong>.
+                . In immediate danger call{' '}
+                <a href="tel:112" className="font-bold text-danger hover:underline">
+                  112
+                </a>
+                .
               </p>
             </div>
-            <div className="flex flex-wrap gap-x-5 gap-y-2 font-sans text-caption font-semibold text-fg-dim">
+            <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2 font-sans text-caption font-semibold text-fg-dim">
               <Link to="/about" className="hover:text-fg">
                 About
               </Link>
@@ -75,14 +96,12 @@ export function AppShell() {
               <Link to="/profile" className="hover:text-fg">
                 Profile
               </Link>
-            </div>
+            </nav>
           </div>
         </footer>
       </div>
 
       <MobileNav />
-      <EffectsHost />
-      <ToastHost />
     </div>
   )
 }

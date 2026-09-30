@@ -36,23 +36,61 @@ create index if not exists lawlink_kv_user_updated_idx
 
 alter table lawlink_kv enable row level security;
 
--- Own row only. `to auth.uid()` makes these per-user, not merely "authenticated".
+-- Own row only. `to authenticated` keeps the anon role out entirely, and `user_id = auth.uid()`
+-- makes each policy per-user rather than merely "any signed-in user". Every policy is dropped
+-- first so this file can be re-run safely.
+revoke all on lawlink_kv from anon;
+
+drop policy if exists "read own rows" on lawlink_kv;
 create policy "read own rows"
   on lawlink_kv for select
+  to authenticated
   using (user_id = auth.uid());
 
+drop policy if exists "insert own rows" on lawlink_kv;
 create policy "insert own rows"
   on lawlink_kv for insert
+  to authenticated
   with check (user_id = auth.uid());
 
+drop policy if exists "update own rows" on lawlink_kv;
 create policy "update own rows"
   on lawlink_kv for update
+  to authenticated
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+drop policy if exists "delete own rows" on lawlink_kv;
 create policy "delete own rows"
   on lawlink_kv for delete
+  to authenticated
   using (user_id = auth.uid());
+
+-- Size limits, so one client cannot store an unbounded blob. Re-runnable.
+alter table lawlink_kv drop constraint if exists lawlink_kv_key_length;
+alter table lawlink_kv
+  add constraint lawlink_kv_key_length check (char_length(key) between 1 and 128);
+
+alter table lawlink_kv drop constraint if exists lawlink_kv_value_size;
+alter table lawlink_kv
+  add constraint lawlink_kv_value_size check (pg_column_size(value) <= 262144);
+
+-- Keep updated_at honest: the client cannot forge or forget it.
+create or replace function lawlink_set_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists lawlink_kv_set_updated_at on lawlink_kv;
+create trigger lawlink_kv_set_updated_at
+  before update on lawlink_kv
+  for each row execute function lawlink_set_updated_at();
 
 -- ------------------------------------------------------------------
 -- Optional: a real leaderboard. The shipped leaderboard is seeded demo data
@@ -68,6 +106,8 @@ create policy "delete own rows"
 --   updated_at timestamptz not null default now()
 -- );
 -- alter table lawlink_scores enable row level security;
--- create policy "scores are public read" on lawlink_scores for select using (true);
--- create policy "update own score"   on lawlink_scores for update
+-- drop policy if exists "scores are public read" on lawlink_scores;
+-- create policy "scores are public read" on lawlink_scores for select to authenticated using (true);
+-- drop policy if exists "update own score" on lawlink_scores;
+-- create policy "update own score" on lawlink_scores for update to authenticated
 --   using (user_id = auth.uid()) with check (user_id = auth.uid());

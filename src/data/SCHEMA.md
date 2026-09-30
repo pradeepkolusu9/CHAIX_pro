@@ -6,7 +6,7 @@ No extra top-level keys. Keep copy plain Indian-English — short sentences, no 
 ```js
 export default {
   id: 'consumer',                       // must equal filename
-  emoji: '🛍️',
+  sigil: 'consumer',                    // key of the module's mark in the UI (no emoji field)
   name: 'Consumer Rights',              // display name
   tagline: 'One line, max ~60 chars',   // card subtitle
   difficulty: 'Foundation' | 'Intermediate' | 'Advanced',
@@ -33,7 +33,9 @@ export default {
     link: 'https://consumerhelpline.gov.in',
   },
   source: 'https://www.indiacode.nic.in',
-  lastVerified: '2026-09-30',           // ISO date — the date the facts were checked
+  lastVerified: '2026-09-30',           // ISO date — the date the content was AUTHORED (draft).
+                                        // NOT a legal sign-off. UI should label it 'Drafted'
+                                        // (see LAST_VERIFIED_LABEL in src/lib/review.js).
 
   // -------------------------------------------------------------- lessons
   lessons: [                             // 2 short "read" cards, each worth 20 XP
@@ -65,13 +67,13 @@ export default {
       ],
       law: 'Consumer Protection Act, 2019 — s.35',            // shown in trust block
       source: 'https://consumerhelpline.gov.in',
-      lastVerified: '2026-09-30',
+      lastVerified: '2026-09-30',           // authored/drafted date, not a legal check
       hint: 'Optional one-line nudge shown before answering.',
     },
   ],
 
   // ----------------------------------------------------------------- quiz
-  quiz: [                                // 8 per module, 25 XP each when correct
+  quiz: [                                // 8 per module, 25 XP each when correct; EXACTLY 4 options each
     {
       id: 'q-co-1',                      // must be prefixed q-<moduleShort>-
       question: 'A question a student would actually ask.',
@@ -103,7 +105,18 @@ export default {
 3. Only these emergency numbers may be used anywhere in the app:
    `112, 100, 101, 108, 1076, 1073, 1091, 1098, 181, 1930, 1915, 1033`.
    Anything else must be a website link, not a number.
+   Meanings: 112 all-in-one, 100 police, 101 FIRE, 108 ambulance, 1091 women helpline (run with the
+   police), 181 Women Helpline (Ministry of Women and Child Development), 1098 Childline, 1930 cyber
+   fraud, 1915 consumer helpline, 1033 highway helpline (NHAI). 101 is NOT an ambulance number.
 4. Options must be plausible. Never make a wrong answer obviously silly ("ignore it completely").
-5. Correct answers should usually be option index 1 or 2 — vary it, do not always make (b) right.
+5. Spread the correct answer across all four positions (0-3) roughly evenly. The correct option must
+   not be identifiable by length: keep it the uniquely longest in well under a third of the questions.
+   Every option must be a complete sentence — never cut mid-sentence (tests/option-grammar.test.js).
 6. Keep the tone calm and practical. No scolding, no jokes at the user's expense.
 7. No lorem ipsum, no TODOs, no "coming soon". Every field must be real content.
+8. Statutes that were replaced: cite the current law. The Indian Evidence Act, 1872 (s.65B) is now the
+   Bharatiya Sakshya Adhiniyam, 2023 (s.63); the CrPC is 1973 and BNSS/BNS/BSA are in force from
+   1 July 2024. There is no central "Ragging Prohibition Act" — cite the UGC Regulations on Curbing the
+   Menace of Ragging in Higher Educational Institutions, 2009 and state laws.
+9. Where a point of law is contested, soften the sentence so it is true under either reading and add a
+   `// needsLawyer:` comment; list it in LAWYER_FLAGS in src/lib/review.js.

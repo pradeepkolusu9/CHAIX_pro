@@ -6,6 +6,7 @@
  * failures we shipped: a "Verified" badge over AI-authored text, and a hardcoded
  * date that pretended every item had been checked on the same day it was written.
  */
+import { readFileSync } from 'node:fs'
 import { describe, it, expect } from 'vitest'
 import { MODULES, allScenarios, allQuiz } from '../src/data/modules.js'
 import { FACTS } from '../src/data/facts.js'
@@ -133,5 +134,77 @@ describe('the verified date is not a blanket claim', () => {
       // it as a legal sign-off. The distinction is documented in lib/review.js.
       expect(typeof m.lastVerified).toBe('string')
     }
+  })
+})
+
+describe('quiz structure', () => {
+  it('every quiz question has exactly four distinct options (SCHEMA.md)', () => {
+    const bad = allQuiz.filter((q) => q.options.length !== 4 || new Set(q.options.map((o) => o.trim().toLowerCase())).size !== 4)
+    expect(bad.map((q) => q.id)).toEqual([])
+  })
+
+  it('ids are unique across scenarios, lessons and quiz items', () => {
+    const ids = MODULES.flatMap((m) => [
+      ...m.lessons.map((l) => l.id),
+      ...m.scenarios.map((s) => s.id),
+      ...m.quiz.map((q) => q.id),
+    ])
+    const dupes = ids.filter((id, i) => ids.indexOf(id) !== i)
+    expect(dupes).toEqual([])
+    for (const s of allScenarios) {
+      expect(new Set(s.options.map((o) => o.id)).size, `${s.id} option ids`).toBe(s.options.length)
+    }
+  })
+
+  it('the correct quiz option is the uniquely longest in at most 35% of questions', () => {
+    const uniqueLongest = allQuiz.filter((q) => {
+      const L = q.options.map((o) => o.length)
+      const c = L[q.correct]
+      return c === Math.max(...L) && L.filter((x) => x === c).length === 1
+    })
+    expect(uniqueLongest.length / allQuiz.length).toBeLessThanOrEqual(0.35)
+  })
+
+  it('correct answers are spread across all four positions', () => {
+    const dist = [0, 0, 0, 0]
+    for (const q of allQuiz) dist[q.correct] += 1
+    for (const n of dist) expect(n / allQuiz.length).toBeGreaterThan(0.15)
+  })
+})
+
+describe('demo progress only references content that exists', () => {
+  it('every id listed in store.jsx demoState() exists in src/data', () => {
+    const src = readFileSync(new URL('../src/lib/store.jsx', import.meta.url), 'utf8')
+    const start = src.indexOf('export function demoState')
+    expect(start, 'demoState not found').toBeGreaterThan(-1)
+    const body = src.slice(start, src.indexOf('\nexport ', start + 10) > 0 ? src.indexOf('\nexport ', start + 10) : undefined)
+    const known = new Set(MODULES.flatMap((m) => [...m.lessons.map((l) => l.id), ...m.scenarios.map((s) => s.id), ...m.quiz.map((q) => q.id)]))
+    const used = [...body.matchAll(/'((?:sc|ls|q)-[a-z]{2}-\d+)'/g)].map((m) => m[1])
+    expect(used.length, 'no ids found — the check is not reading anything').toBeGreaterThan(5)
+    expect(used.filter((id) => !known.has(id))).toEqual([])
+    const moduleKeys = [...body.matchAll(/^\s{8}([a-z]+): \{\s*$/gm)].map((m) => m[1])
+    for (const k of moduleKeys) expect(MODULES.some((m) => m.id === k), `demo module ${k}`).toBe(true)
+  })
+})
+
+describe('emergency numbers mean what they say', () => {
+  it('101 is the fire service and 108 the ambulance in the resource directory', () => {
+    const by = Object.fromEntries(RESOURCES.filter((r) => r.number).map((r) => [r.number, r]))
+    expect(by['101'].name.toLowerCase()).toContain('fire')
+    expect(by['101'].name.toLowerCase()).not.toContain('ambulance')
+    expect(by['108'].name.toLowerCase()).toContain('ambulance')
+  })
+
+  it('no string calls 101 an ambulance number', () => {
+    const bad = allStrings().filter((s) => /101[^.]{0,40}ambulance|ambulance[^.]{0,40}\b101\b/i.test(s))
+    expect(bad).toEqual([])
+  })
+
+  it('no content cites a repealed or invented statute', () => {
+    const blob = JSON.stringify([MODULES, FACTS, RESOURCES])
+    for (const bad of ['Ragging Prohibition Act', 'Criminal Procedure, 1938', '1 October 2024', 'nios.ac.in', 'Section 65B of the Information Technology Act', 'Payment and Settlement Systems Act']) {
+      expect(blob, bad).not.toContain(bad)
+    }
+    expect(blob).not.toMatch(/http:\/\//)
   })
 })

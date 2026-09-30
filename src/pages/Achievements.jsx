@@ -41,7 +41,7 @@ function badgeProgress(badge, { impact, stats, streak, bestQuizPct }) {
   const mod = MODULE_BADGE[badge.id]
   if (mod && stats[mod]) {
     const pct = stats[mod].pct
-    return { value: pct, target: 100, readout: `${pct}%`, label: `${badge.hint} — ${pct}% done` }
+    return { value: pct, target: 100, readout: `${pct}%`, label: `${badge.hint} — ${pct}% done${pct >= 99 ? ', pass the quiz to finish' : ''}` }
   }
   switch (badge.id) {
     case 'first-step':
@@ -53,10 +53,10 @@ function badgeProgress(badge, { impact, stats, streak, bestQuizPct }) {
       }
     case 'quick-learner':
       return {
-        value: impact.quizAccuracy,
+        value: bestQuizPct,
         target: 90,
-        readout: `${impact.quizAccuracy}%`,
-        label: `Quiz accuracy ${impact.quizAccuracy}% — 90% target`,
+        readout: `${bestQuizPct}%`,
+        label: `Best quiz score ${bestQuizPct}% — 90% target`,
       }
     case 'streak-master':
       return {

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LawLink AI — curated awareness knowledge base.
  *
  * This is a deterministic intent engine over verified content, not a live LLM.
@@ -41,7 +41,8 @@ export const INTENTS = [
     keywords: [
       'order', 'delivery', 'delivered', 'refund', 'money back', 'not received', 'never arrived',
       'online order', 'flipkart', 'amazon', 'myntra', 'tracking', 'cancelled', 'return',
-      'didnt come', 'did not come', 'not delivered', 'waiting for',
+      'didnt come', 'did not come', 'not delivered', 'never delivered', 'never came',
+      'waiting for delivery', 'waiting for my order',
     ],
     meaning:
       'When you pay for a product or service online, you become a consumer under the Consumer Protection Act, 2019. A product that never arrives, arrives damaged, or is not what was described is a deficiency in service or a defective product — it is not something you have to just accept.',
@@ -66,7 +67,7 @@ export const INTENTS = [
     module: 'consumer',
     keywords: [
       'defective', 'warranty', 'broken', 'not working', 'damaged', 'repair', 'replacement',
-      'service centre', 'service center', 'exchange', 'faulty', 'stopped working', 'no response',
+      'service centre', 'service center', 'exchange', 'faulty', 'stopped working',
     ],
     meaning:
       'A product that fails within its advertised or promised life is a defect. A manufacturer or seller who refuses to repair or replace it can be taken to a Consumer Disputes Redressal Commission, and compensation can be awarded for the cost of the product and the loss from its failure.',
@@ -94,7 +95,7 @@ export const INTENTS = [
       'refund fee', 'fees refund', 'training fee', 'education service', 'college fee',
     ],
     meaning:
-      'Education and coaching are treated as a "service" under the Consumer Protection Act, 2019. If you paid for a course that was never delivered, or a refund that was promised and not given, that is a consumer grievance — you are not simply at the mercy of the institute.',
+      'Fees paid for coaching or a course that was never delivered can often be taken to a consumer forum under the Consumer Protection Act, 2019, though courts have treated some education matters differently. A refund that was promised and not given is a grievance you can put in writing — you are not simply at the mercy of the institute.',
     rights: [
       'A refund of fees for a service that was not delivered',
       'Information about the refund policy before you paid',
@@ -117,14 +118,14 @@ export const INTENTS = [
     area: 'Cybercrime — financial fraud and money debited',
     module: 'cybercrime',
     keywords: [
-      'scam', 'fraud', 'fraudulent', 'money debited', 'debited', 'money gone', 'lost money',
-      'upi', 'upi fraud', 'transfer', 'cheating', 'lost rs', 'lost 5000', 'paid by mistake',
-      'unauthorized', 'unauthorised', 'stolen money', 'wrong account', 'bank fraud',
+      'scam', 'fraud', 'fraudulent', 'money debited', 'debited', 'money gone', 'lost money', 'upi',
+      'upi fraud', 'transfer', 'cheating', 'lost rs', 'paid by mistake', 'unauthorized',
+      'unauthorised', 'stolen money', 'wrong account', 'bank fraud',
     ],
     meaning:
-      'Cheating you by deception online is an offence under the Information Technology Act, 2000, and your bank has a duty to stop a payment once you report it under section 25 of the Payment and Settlement Systems Act, 2007. The single most important thing is the first hour.',
+      'Cheating you by deception online is an offence under the Information Technology Act, 2000, and the RBI circular on limiting customer liability (2017) protects you when you report an unauthorised electronic transaction promptly. The single most important thing is the first hour.',
     rights: [
-      'A chargeback for an electronic payment made without your authorisation',
+      'Limited liability for an electronic payment made without your authorisation, if you report it promptly',
       'A written fraud report from your bank',
       'A complaint record from the National Cyber Crime Reporting Portal',
     ],
@@ -167,9 +168,9 @@ export const INTENTS = [
     area: 'Cybercrime — phishing links and fake profiles',
     module: 'cybercrime',
     keywords: [
-      'phishing', 'fake link', 'suspicious link', 'lottery', 'won', 'prize', 'free money',
-      'free gift', 'voucher', 'impersonat', 'fake profile', 'fake account', 'my number',
-      'someone using my name', 'cloned', 'task', 'part time job', 'job offer', 'recruiter',
+      'phishing', 'fake link', 'suspicious link', 'lottery', 'prize', 'free money', 'free gift',
+      'voucher', 'impersonat', 'fake profile', 'fake account', 'someone using my name', 'cloned',
+      'part time job', 'job offer', 'recruiter',
     ],
     meaning:
       'Creating a false identity to trick you is covered by the Information Technology Act, 2000, which criminalises cheating by personation. Winning a prize you never entered, or being asked to pay a fee to get a job, are the two most common shapes of it.',
@@ -192,15 +193,15 @@ export const INTENTS = [
     area: 'Cybercrime — stolen phone or hacked account',
     module: 'cybercrime',
     keywords: [
-      'phone stolen', 'phone lost', 'mobile stolen', 'account hacked', 'hacked',
-      'someone logged in', 'unauthorised access', 'instagram hacked', 'whatsapp hacked',
-      'my account', 'taken over', 'new device', 'sim swap',
+      'phone stolen', 'phone lost', 'mobile stolen', 'stolen phone', 'lost my phone',
+      'account hacked', 'hacked', 'someone logged in', 'unauthorised access', 'instagram hacked',
+      'whatsapp hacked', 'taken over', 'new device', 'sim swap',
     ],
     meaning:
       'Unauthorised access into an electronic record is an offence under the Information Technology Act, 2000. If your phone was stolen, remember that your bank and mail apps on that phone are still logged in, so the money is the bigger risk.',
     rights: [
       'A right to have unauthorised access to your devices and accounts treated as an offence',
-      'A chargeback for transactions made without your authorisation',
+      'Limited liability for transactions made without your authorisation, if you report them promptly',
     ],
     steps: [
       { step: 1, text: 'Call your bank first from another phone and freeze the account and UPI.' },
@@ -219,9 +220,9 @@ export const INTENTS = [
     area: 'Digital Privacy — apps, Aadhaar and personal data',
     module: 'privacy',
     keywords: [
-      'privacy', 'personal data', 'aadhaar', 'aadhar', 'kyc', 'camera access', 'mic access',
-      'permissions', 'tracking', 'leak', 'breach', 'data breach', 'sold my data', 'spam call',
-      'face recognition', 'scraped', 'facial', 'my number is known', 'sold',
+      'privacy', 'personal data', 'aadhaar', 'aadhar', 'camera access', 'mic access',
+      'permissions', 'leak', 'breach', 'data breach', 'sold my data', 'spam call',
+      'face recognition', 'scraped', 'facial',
     ],
     meaning:
       'The Digital Personal Data Protection Act, 2023 sets out how your personal data may be processed and gives you the right to access, correct and erase it. Under the Information Technology Act, 2000, publishing private information without consent is an offence. Your consent has to be free, specific, informed and unambiguous — and you can withdraw it.',
@@ -244,16 +245,18 @@ export const INTENTS = [
   // ------------------------------------------------------------- student
   {
     id: 'st-ragging',
-    area: 'Student Rights — ragging and campus discipline',
+    area: 'Student Rights — ragging and harassment on campus',
     module: 'student',
     keywords: [
       'ragging', 'ragged', 'senior', 'hostel', 'junior', 'pushed', 'forced', 'targeted',
       'anti ragging', 'college harassment', 'outcast', 'not allowed in hostel',
+      'harassed in college', 'harassed in my college', 'harassed at college',
+      'harassment in college', 'harassment at college', 'bullied in college',
     ],
     meaning:
-      'Ragging is prohibited under the Ragging Prohibition Act, 2009. It is a separate offence from the underlying cruelty, and every institution is required to have an anti-ragging committee. You are not required to tolerate it, and you do not have to fix it alone.',
+      'Ragging is prohibited under the UGC Regulations on Curbing the Menace of Ragging in Higher Educational Institutions, 2009, and several states have their own anti-ragging laws. Every institution is required to have an anti-ragging committee. If the harassment is sexual in nature, the Sexual Harassment of Women at Workplace Act, 2013 and its Internal Complaints Committee may also apply. You are not required to tolerate it, and you do not have to fix it alone.',
     rights: [
-      'Protection against ragging under the Ragging Prohibition Act, 2009',
+      'Protection against ragging under the UGC anti-ragging regulations and state law',
       'The right to complain to the institution\'s anti-ragging committee and to the police',
       'A right to be informed of the action taken on your complaint',
     ],
@@ -263,8 +266,8 @@ export const INTENTS = [
       { step: 3, text: 'If the institution does not act, complain to the affiliating university and the relevant regulatory authority.' },
       { step: 4, text: 'If there is a threat to your safety, call 112 or 100 and say so plainly. You do not have to wait for the committee to respond first.' },
     ],
-    resource: { label: 'Police emergency — 112', href: 'https://112.gov.in', number: '112' },
-    source: { label: 'Ragging Prohibition Act, 2009', href: 'https://www.indiacode.nic.in' },
+    resource: { label: 'UGC anti-ragging portal', href: 'https://www.antiragging.in' },
+    source: { label: 'UGC Regulations on Curbing the Menace of Ragging, 2009', href: 'https://www.ugc.gov.in' },
     urgent: false,
   },
   {
@@ -272,13 +275,13 @@ export const INTENTS = [
     area: 'Student Rights — exams, marksheets and fees',
     module: 'student',
     keywords: [
-      'marksheet', 'marks sheet', 're-evaluation', 'reevaluation', 're evaluation', 'result',
-      'grievance', 'exam grievance', 'transcript', 'tc', 'withholding', 'detention',
+      'marksheet', 'marks sheet', 're evaluation', 'reevaluation', 'result', 'grievance',
+      'exam grievance', 'transcript', 'transfer certificate', 'withholding', 'detention',
       'fees not returned', 'refund of fees', 'hostel mess', 'university not responding',
-      'no reply', 'expelled', 'detained',
+      'expelled', 'detained',
     ],
     meaning:
-      'A university owes you its rules, and the marksheet and transcript are documents you are entitled to receive. If a grievance process exists, you are entitled to use it and to a response. Withholding an academic document to pressure a fee is not a lawful collection method.',
+      'A university owes you its rules, and the marksheet and transcript are documents you are entitled to receive. If a grievance process exists, you are entitled to use it and to a response. Holding back an academic document to pressure a fee is widely regarded as improper and can be challenged.',
     rights: [
       'A right to the marksheet and other academic documents once the process is complete',
       'A right to use the examination grievance or re-evaluation process of your institution',
@@ -288,10 +291,10 @@ export const INTENTS = [
       { step: 1, text: 'Put the complaint in writing to the office of the Controller of Examinations or the Head of Department, and keep a copy.' },
       { step: 2, text: 'Ask for the date of the next examination board meeting — most institutions are required to consider grievances there.' },
       { step: 3, text: 'If there is no response, escalate to the affiliating university. Use the RTI Act, 2005 to ask for the records you are not being given.' },
-      { step: 4, text: 'For fees paid to a private institute, it is also a consumer complaint under the Consumer Protection Act, 2019 — helpline 1915.' },
+      { step: 4, text: 'For fees paid to a private institute, ask whether a consumer complaint under the Consumer Protection Act, 2019 is possible — the National Consumer Helpline is 1915.' },
     ],
-    resource: { label: 'National Consumer Helpline — 1915', href: 'https://consumerhelpline.gov.in', number: '1915' },
-    source: { label: 'Ragging Prohibition Act, 2009 / Consumer Protection Act, 2019', href: 'https://www.indiacode.nic.in' },
+    resource: { label: 'UGC — regulations and student grievance information', href: 'https://www.ugc.gov.in' },
+    source: { label: 'Right to Information Act, 2005', href: 'https://www.indiacode.nic.in' },
     urgent: false,
   },
 
@@ -303,11 +306,11 @@ export const INTENTS = [
     keywords: [
       'salary', 'not paid', 'unpaid', 'salary delay', 'wages', 'pending salary', 'no contract',
       'working hours', 'overtime', 'weekly off', 'holiday', 'night shift', 'internship',
-      'unpaid internship', 'fired', 'terminated', 'notice', 'pf', 'provident fund',
-      'gratuity', 'minimum wage', 'labour', 'employee',
+      'unpaid internship', 'fired', 'terminated', 'notice', 'provident fund', 'gratuity',
+      'minimum wage', 'labour', 'employee',
     ],
     meaning:
-      'The labour codes in India — the Code on Wages, 2019, the Industrial Relations Code, 2020, the Code on Social Security, 2020 and the Occupational Safety, Health and Working Conditions Code, 2020 — set the ground rules on wages, hours, leave, provident fund and termination. Minimum wages and shop and establishment rules are set by your state, so the exact entitlement depends on where the job is.',
+      'India\'s four labour codes — the Code on Wages, 2019, the Industrial Relations Code, 2020, the Code on Social Security, 2020 and the Occupational Safety, Health and Working Conditions Code, 2020 — bring together earlier laws on wages, hours, leave, provident fund and termination, and how far they have been brought into force can affect which rule applies to you. Minimum wages and shop and establishment rules are set by your state, so the exact entitlement depends on where the job is.',
     rights: [
       'Payment of wages as agreed, and equal wages for equal work regardless of gender',
       'Rest periods and weekly off as required by the applicable state rules',
@@ -318,7 +321,7 @@ export const INTENTS = [
       { step: 1, text: 'Ask for your appointment letter or contract in writing, and keep every payslip, bank credit and message.' },
       { step: 2, text: 'Put the grievance in writing to the employer and to HR, and ask for a written response.' },
       { step: 3, text: 'Raise it with the office of the relevant labour authority for your state, and use the Shram Suvidha portal where applicable.' },
-      { step: 4, text: 'For provident fund issues, raise a grievance on the EPFO Grievance portal. For an unpaid internship, remember that a purely educational internship with no productive work and no compensation is a serious red flag.' },
+      { step: 4, text: 'For provident fund issues, raise a grievance on the EPFO Grievance portal. For an unpaid internship, get the terms in writing, because the label alone does not decide your rights.' },
     ],
     resource: { label: 'Ministry of Labour and Employment', href: 'https://labour.gov.in' },
     source: { label: 'Code on Wages, 2019 / EPF Act, 1952', href: 'https://labour.gov.in' },
@@ -330,7 +333,7 @@ export const INTENTS = [
     module: 'workplace',
     keywords: [
       'maternity', 'maternity leave', 'pregnant', 'pregnancy', 'baby', 'childbirth',
-      'not allowed to work', 'maternity benefit', '26 weeks', 'crore',
+      'not allowed to work', 'maternity benefit', '26 weeks',
     ],
     meaning:
       'The Maternity Benefit (Amendment) Act, 2017 raised the period of paid maternity leave for the first two children to 26 weeks for establishments covered by the Maternity Benefit Act. Employers cannot dismiss a woman by reason of pregnancy or because of the period of absence connected with maternity, and an antenatal examination is part of working hours.',
@@ -358,12 +361,13 @@ export const INTENTS = [
       'drunk', 'drink', 'driving', 'dui', 'alcohol', 'booze', 'bac', 'breath test', 'breathalyzer',
       'refused test', 'licence suspended', 'license suspended', 'no licence', 'helmet',
       'seat belt', 'seatbelt', 'accident', 'third party', 'insurance claim', 'e-challan',
-      'challan', 'traffic police', 'speed', 'fine', 'number plate',
+      'challan', 'traffic police', 'speed', 'number plate', 'drink driving', 'drunk driving',
+      'drink and drive',
     ],
     meaning:
-      'The Motor Vehicles Act, 1988 governs this. The prescribed limit is 30 mg of alcohol per 100 ml of blood. Riding or driving after drinking is an offence under section 185, and the court may disqualify your driving licence for a period of six months to three years. Riding without a valid licence or registration is an offence in its own right, and third-party motor insurance is compulsory.',
+      'The Motor Vehicles Act, 1988 governs this. The prescribed limit is 30 mg of alcohol per 100 ml of blood. Riding or driving after drinking is an offence under section 185, and the court may also disqualify your driving licence. Riding without a valid licence or registration is an offence in its own right, and third-party motor insurance is compulsory.',
     rights: [
-      'A right to a lawful, reasoned process — an challan can be challenged before the designated authority or in court',
+      'A right to a lawful, reasoned process — a challan can be challenged before the designated authority or in court',
       'The benefit of a third-party insurance policy, which is compulsory under the Motor Vehicles Act',
       'Compensation in an accident where you are not at fault, through the insurer and the Motor Accident Claims Tribunal',
     ],
@@ -371,10 +375,10 @@ export const INTENTS = [
       { step: 1, text: 'Keep the challan and any notice. You can respond to it before the authority specified in the notice.' },
       { step: 2, text: 'For a third-party accident you did not cause, tell the police, take photos, and note the vehicle number and insurance details.' },
       { step: 3, text: 'Make the claim to the insurer. If the insurer does not settle, the matter can be taken to the Motor Accident Claims Tribunal.' },
-      { step: 4, text: 'On highways, the Ministry of Road Transport and Highways helpline is 1033.' },
+      { step: 4, text: 'On national highways, the NHAI highway helpline is 1033.' },
     ],
-    resource: { label: 'MoRTH highway patrol — 1033', href: 'https://morth.nic.in', number: '1033' },
-    source: { label: 'Motor Vehicles Act, 1988', href: 'https://indiacode.nic.in' },
+    resource: { label: 'Parivahan — challan, licence and vehicle services', href: 'https://parivahan.gov.in' },
+    source: { label: 'Motor Vehicles Act, 1988', href: 'https://www.indiacode.nic.in' },
     urgent: false,
   },
 
@@ -384,9 +388,10 @@ export const INTENTS = [
     area: "Women's Safety — stalking, threats and unsafe situations",
     module: 'safety',
     keywords: [
-      'stalking', 'stalker', 'following me', 'eve teasing', 'followed', 'threat', 'threatening',
-      'unsafe', 'late night', 'travelling alone', 'helpless', 'scared', 'blackmail',
-      'exposing', 'photos of me', 'revenge', 'cyberstalking', 'abusive',
+      'stalking', 'stalker', 'stalked', 'stalking me', 'being stalked', 'following me',
+      'eve teasing', 'followed', 'threat', 'threatening', 'unsafe', 'late night',
+      'travelling alone', 'helpless', 'scared', 'blackmail', 'exposing', 'photos of me', 'revenge',
+      'cyberstalking', 'abusive',
     ],
     meaning:
       'Stalking and criminal intimidation are offences under the Bharatiya Nyaya Sanhita, 2023, which replaced the Indian Penal Code with effect from 1 July 2024. You do not have to wait until something happens. Support is free, confidential and available at any hour.',
@@ -397,13 +402,13 @@ export const INTENTS = [
       'Free legal aid under section 12(c) of the Legal Services Authorities Act, 1987',
     ],
     steps: [
-      { step: 1, text: 'If you are in immediate danger, call 112. If you prefer a women operator, call the Women Helpline on 181 or the Women Power Line on 1091.' },
+      { step: 1, text: 'If you are in immediate danger, call 112. If you prefer a women operator, call the Women Helpline on 181 or the police women helpline on 1091.' },
       { step: 2, text: 'Preserve the evidence — messages, call logs, photos, CCTV. Do not delete anything.' },
       { step: 3, text: 'Report at your local police station. You can ask for an FIR, and for a Zero FIR if the station is not in your area of jurisdiction.' },
       { step: 4, text: 'Ask your local Legal Services Authority about free legal aid, and about a protection order under the Domestic Violence Act, 2005.' },
     ],
-    resource: { label: 'Women Helpline — 181  ·  Women Power Line — 1091', href: 'https://wcd.gov.in', number: '181' },
-    source: { label: 'Bharatiya Nyaya Sanhita, 2023 / Domestic Violence Act, 2005', href: 'https://nalsa.gov.in' },
+    resource: { label: 'Women Helpline — 181  ·  Women helpline (police) — 1091', href: 'https://wcd.gov.in', number: '181' },
+    source: { label: 'Bharatiya Nyaya Sanhita, 2023 / Domestic Violence Act, 2005', href: 'https://www.indiacode.nic.in' },
     urgent: true,
   },
   {
@@ -439,9 +444,8 @@ export const INTENTS = [
     area: 'Free legal aid and how to reach a lawyer',
     module: 'fundamental',
     keywords: [
-      'legal aid', 'free lawyer', 'free legal', 'afford', 'poverty', 'nalSA', 'nalsa',
-      'lawyer', 'advocate', 'court', 'case', 'fir', 'file a complaint', 'police station',
-      'law', 'sue', 'suit', 'where do i go', 'help me', 'not sure',
+      'legal aid', 'free lawyer', 'free legal', 'afford', 'poverty', 'nalsa', 'lawyer', 'advocate',
+      'fir', 'zero fir', 'file a complaint', 'police station',
     ],
     meaning:
       'Free legal services are a statutory right, not a favour. Section 12(c) of the Legal Services Authorities Act, 1987 guarantees free legal services to women and children among others. There is a Legal Services Authority in every district, and lok adalats are organised regularly to settle cases.',
@@ -465,19 +469,20 @@ export const INTENTS = [
     area: 'Emergency numbers and where to complain',
     module: 'fundamental',
     keywords: [
-      'emergency', 'urgent', 'number', 'helpline', 'police number', 'call police', 'ambos',
-      'immediate', 'right now', 'someone is', 'blood', 'fire', 'accident now',
+      'emergency', 'urgent', 'helpline', 'police number', 'call police', 'ambulance',
+      'ambulance number', 'fire brigade', 'fire station', 'medical emergency', 'emergency number',
+      'emergency numbers', 'heart attack', 'on fire', 'immediate', 'accident now',
     ],
     meaning:
-      'You do not need a lawyer to handle an emergency. 112 connects to police, fire and ambulance. 100 is the local police control room, 101 for an ambulance, and 1091 or 181 if you need a woman to answer.',
+      'You do not need a lawyer to handle an emergency. 112 connects to police, fire and ambulance. 100 is the police control room, 101 is the fire service, 108 is the ambulance, and 1091 or 181 if you need a woman to answer.',
     rights: [
       'Emergency response without any precondition — no fee, no paperwork',
       'A police complaint that is expected to be registered for a cognizable offence',
       'Free legal aid afterwards through the district Legal Services Authority',
     ],
     steps: [
-      { step: 1, text: 'Call 112 for any emergency. If 112 does not connect, call 100 for police or 101 for an ambulance.' },
-      { step: 2, text: 'For a woman in distress, the Women Helpline on 181 and the Women Power Line on 1091 are available.' },
+      { step: 1, text: 'Call 112 for any emergency. If 112 does not connect, call 100 for police, 101 for fire or 108 for an ambulance.' },
+      { step: 2, text: 'For a woman in distress, the Women Helpline on 181 and the police women helpline on 1091 are available.' },
       { step: 3, text: 'For cyber fraud, call 1930 — it is free and staffed 24x7.' },
       { step: 4, text: 'For a consumer complaint, call 1915. Once things are safe, use LawLink AI to work out the legal area.' },
     ],
@@ -490,9 +495,9 @@ export const INTENTS = [
     area: 'Fundamental Rights — which right is at play',
     module: 'fundamental',
     keywords: [
-      'my rights', 'fundamental right', 'constitution', 'article', 'equality', 'discrimination',
-      'reservation', 'speech', 'religion', 'education', 'rti', 'information', 'privacy right',
-      'what are my rights', 'constitutional',
+      'fundamental right', 'constitution', 'article', 'equality', 'discrimination', 'reservation',
+      'speech', 'freedom of speech', 'religion', 'education', 'rti', 'right to information',
+      'information', 'privacy right', 'constitutional',
     ],
     meaning:
       'The Constitution of India guarantees a set of fundamental rights in Part III, and the courts can enforce them. For a student the most immediate ones are equality before the law, freedom of speech, the right to education, the right to information, and the right to life and personal liberty, which also covers privacy and dignity.',
@@ -521,13 +526,32 @@ const STOP = new Set([
   'do', 'did', 'can', 'should', 'would', 'what', 'how', 'for', 'with', 'that', 'this', 'be',
 ])
 
+// Apostrophes are dropped (didn't -> didnt) and hyphens become spaces (e-challan -> e challan)
+// BEFORE the general punctuation strip, so contractions and hyphenated words still match.
 function normalise(text = '') {
   return String(text)
     .toLowerCase()
+    .replace(/['\u2018\u2019`]/g, '')
+    .replace(/[-\u2010-\u2015]/g, ' ')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
 }
+
+/**
+ * Single words that appear in many unrelated messages ("order", "senior", "speed").
+ * A weak word scores 1, so it can support a match but never make one on its own;
+ * a strong word ("aadhaar", "stalking", "ragging") scores 3 and can.
+ */
+const WEAK = new Set([
+  'order', 'delivery', 'return', 'cancelled', 'tracking', 'exchange', 'repair', 'damaged', 'broken',
+  'course', 'institute', 'batch', 'transfer', 'pin', 'password', 'permissions', 'leak',
+  'senior', 'hostel', 'junior', 'pushed', 'forced', 'targeted', 'result', 'grievance', 'withholding',
+  'detention', 'holiday', 'notice', 'labour', 'employee', 'fired', 'baby', 'drink', 'driving',
+  'accident', 'speed', 'threat', 'unsafe', 'helpless', 'scared', 'abusive', 'followed', 'exposing',
+  'unwanted', 'inappropriate', 'touching', 'teacher', 'colleague', 'afford', 'poverty', 'advocate',
+  'helpline', 'urgent', 'immediate', 'article', 'equality', 'speech', 'religion', 'education', 'information',
+].map(normalise))
 
 function tokens(text) {
   return normalise(text).split(' ').filter((t) => t.length > 2 && !STOP.has(t))
@@ -539,32 +563,39 @@ function tokens(text) {
  */
 export function matchIntent(message, allowedModules = null) {
   const text = normalise(message)
+  const padded = ` ${text} `
   const words = new Set(tokens(message))
-  const bigrams = new Set()
-  const arr = text.split(' ')
-  for (let i = 0; i < arr.length - 1; i += 1) bigrams.add(`${arr[i]} ${arr[i + 1]}`)
 
   let best = null
   let bestScore = 0
+  let bestHits = 0
 
-  for (const intent of INTENTS) {
-    if (allowedModules && !allowedModules.includes(intent.module)) continue
+  INTENTS.forEach((intent) => {
+    if (allowedModules && !allowedModules.includes(intent.module)) return
     let score = 0
-    for (const kw of intent.keywords) {
+    let hits = 0
+    for (const raw of intent.keywords) {
+      const kw = normalise(raw)
       if (kw.includes(' ')) {
-        if (text.includes(kw)) score += 5
-        else if (bigrams.has(kw)) score += 3
+        if (padded.includes(` ${kw} `)) { score += 5; hits += 1 }
       } else if (words.has(kw)) {
-        score += 3
-      } else if (text.includes(kw) && kw.length > 4) {
-        score += 1
+        score += WEAK.has(kw) ? 1 : 3
+        hits += 1
+      } else if (!WEAK.has(kw) && kw.length > 4 && text.includes(kw)) {
+        score += 1 // stem hit, e.g. "seniors" for "senior"
+        hits += 1
       }
     }
-    if (score > bestScore) {
-      bestScore = score
+    // Deterministic tie-break: score, then distinct hits, then urgent intents, then list order.
+    const better =
+      score > bestScore ||
+      (score === bestScore && score > 0 && (hits > bestHits || (hits === bestHits && intent.urgent && !best?.urgent)))
+    if (better) {
       best = intent
+      bestScore = score
+      bestHits = hits
     }
-  }
+  })
 
   return { intent: bestScore >= 3 ? best : null, score: bestScore }
 }

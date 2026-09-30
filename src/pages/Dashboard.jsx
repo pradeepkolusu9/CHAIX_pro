@@ -7,7 +7,7 @@ import { useStore } from '../lib/store.jsx'
 import { MODULES } from '../data/modules.js'
 import { levelNumber, XP_RULES } from '../lib/gamification.js'
 import { dailyChallenge, dailyTitle } from '../data/challenges.js'
-import { buildBoard } from '../data/leaderboard.js'
+import { buildBoard, weeklyXp } from '../data/leaderboard.js'
 import { todayKey } from '../lib/dates.js'
 import { toneFor } from '../lib/moduleTone.js'
 
@@ -71,15 +71,15 @@ function ActionTile({ to, icon, tone, title, sub, chip }) {
 }
 
 export default function Dashboard() {
-  const { profile, level, streak, stats, unlocked, daily, quizHistory, week } = useStore()
+  const { profile, level, streak, stats, unlocked, daily, week, nextModuleId, ledger, sixtySecond } = useStore()
   const nav = useNavigate()
 
-  /** The current mission: the partially-done module, else the next open one. */
-  const mission = useMemo(() => {
-    const partial = MODULES.find((m) => stats[m.id] && stats[m.id].pct > 0 && stats[m.id].pct < 100)
-    if (partial) return partial
-    return MODULES.find((m) => unlocked[m.id] !== false) || MODULES[0]
-  }, [stats, unlocked])
+  /** The current mission: the first open, unfinished module. Null-safe fallback only when all are done. */
+  const allDone = !nextModuleId
+  const mission = useMemo(
+    () => MODULES.find((m) => m.id === nextModuleId) || MODULES[0],
+    [nextModuleId],
+  )
 
   const scenario = useMemo(() => {
     const s = stats[mission.id] || {}
@@ -88,13 +88,12 @@ export default function Dashboard() {
 
   const missionStat = stats[mission.id] || {}
   const missionPct = missionStat.pct || 0
-  const board = buildBoard('weekly', { xp: level.xp, college: profile?.college, name: profile?.name })
+  const board = buildBoard('weekly', { xp: weeklyXp(ledger).xp, college: profile?.college, name: profile?.name })
   const me = board.you
   const ahead = board.rows.filter((r) => !r.isYou && r.rank < (me?.rank || 99))
   const gap = ahead.length ? me.xp - ahead[ahead.length - 1].xp : 0
   const dc = dailyChallenge()
   const dailyDone = daily?.lastDone === todayKey()
-  const bestQuiz = quizHistory.reduce((a, q) => (q.total ? Math.max(a, Math.round((q.score / q.total) * 100)) : a), 0)
   const levelPct = level.isMax ? 100 : Math.round(((level.into || 0) / (level.span || 1)) * 100)
   const streakNow = streak?.current || 0
   const daysDone = (week || []).filter((d) => d.done).length
@@ -117,32 +116,37 @@ export default function Dashboard() {
           <div className="flex flex-col-reverse gap-6 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1">
               <div className="eyebrow mb-3">
-                Continue · {mission.name} · Scenario {Math.min((missionStat.scenariosDone || 0) + 1, mission.scenarios.length)} of{' '}
-                {mission.scenarios.length}
+                {allDone
+                  ? 'Journey complete'
+                  : `Continue · ${mission.name} · Scenario ${Math.min((missionStat.scenariosDone || 0) + 1, mission.scenarios.length)} of ${mission.scenarios.length}`}
               </div>
-              <h2 className="case-title">{scenario.title}</h2>
-              <p className="lead measure mt-3 line-clamp-3">{scenario.situation}</p>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Pill tone="xp">+{XP_RULES.scenario} XP</Pill>
-                <Pill>{mission.difficulty}</Pill>
-                <Pill>~{mission.minutes} min</Pill>
-              </div>
+              <h2 className="case-title">{allDone ? 'You finished the journey' : scenario.title}</h2>
+              <p className="lead measure mt-3 line-clamp-3">
+                {allDone ? 'Every module is complete. Replay any of them or climb the leaderboard.' : scenario.situation}
+              </p>
+              {!allDone && (
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Pill tone="xp">+{XP_RULES.scenario} XP</Pill>
+                  <Pill>{mission.difficulty}</Pill>
+                  <Pill>~{mission.minutes} min</Pill>
+                </div>
+              )}
               {/* The ONE primary button on this screen. */}
               <Button
                 variant="primary"
                 size="lg"
                 className="mt-7"
-                onClick={() => nav(`/lesson/${mission.id}?tab=scenario`)}
-                icon={Play}
+                onClick={() => nav(allDone ? '/journey' : `/lesson/${mission.id}?tab=scenario`)}
+                icon={allDone ? Trophy : Play}
                 iconRight={ArrowRight}
               >
-                {missionPct > 0 ? 'Resume scenario' : 'Start scenario'}
+                {allDone ? 'Open the journey map' : missionPct > 0 ? 'Resume scenario' : 'Start scenario'}
               </Button>
             </div>
-            <Ring pct={missionPct} size={104}>
+            <Ring pct={allDone ? 100 : missionPct} size={104}>
               <div className="text-center">
-                <div className="num-lg leading-none">{missionPct}%</div>
-                <div className="caption mt-0.5">{mission.name.length > 12 ? 'module' : mission.name}</div>
+                <div className="num-lg leading-none">{allDone ? 100 : missionPct}%</div>
+                <div className="caption mt-0.5">{allDone ? 'journey' : mission.name.length > 12 ? 'module' : mission.name}</div>
               </div>
             </Ring>
           </div>
@@ -195,11 +199,11 @@ export default function Dashboard() {
               {daysDone} of {(week || []).length || 7} days
             </div>
           </div>
-          <ul className="flex flex-1 justify-between gap-1 sm:max-w-md sm:justify-end sm:gap-4">
+          <ul className="flex w-full min-w-0 justify-between gap-1 sm:w-auto sm:max-w-md sm:flex-1 sm:justify-end sm:gap-4">
             {(week || []).map((d) => (
-              <li key={d.date} className="flex flex-col items-center gap-1.5" title={d.date}>
+              <li key={d.date} className="flex min-w-0 flex-1 flex-col items-center gap-1.5 sm:flex-none" title={d.date}>
                 <span
-                  className={`grid h-9 w-9 place-items-center rounded-full ${
+                  className={`grid aspect-square w-full max-w-[36px] min-w-0 place-items-center rounded-full ${
                     d.done ? 'tile tile-warn' : d.future ? 'bg-white/[0.05]' : 'bg-white/[0.12]'
                   }`}
                 >
@@ -225,7 +229,7 @@ export default function Dashboard() {
             icon={Timer}
             tone="electric"
             title="60-second run"
-            sub={bestQuiz ? `Best quiz ${bestQuiz}%. 8 questions, 60 seconds.` : '8 questions, 60 seconds.'}
+            sub={sixtySecond?.cleared ? `${sixtySecond.cleared} cleared so far. Beat the 60-second clock.` : 'Beat the 60-second clock.'}
             chip={<Pill tone="electric">Fast</Pill>}
           />
           <ActionTile
@@ -254,13 +258,13 @@ export default function Dashboard() {
             Open the map
           </Link>
         </div>
-        <ol className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-8 sm:overflow-visible sm:px-0">
+        <ol className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2 lg:mx-0 lg:grid lg:grid-cols-8 lg:overflow-visible lg:px-0">
           {MODULES.map((m, i) => {
             const s = stats[m.id] || {}
             const open = unlocked[m.id] !== false
-            const isNow = m.id === mission.id
+            const isNow = !allDone && m.id === mission.id
             return (
-              <li key={m.id} className="w-[92px] shrink-0 sm:w-auto">
+              <li key={m.id} className="w-[92px] shrink-0 lg:w-auto">
                 <Link
                   to={open ? `/lesson/${m.id}` : '/journey'}
                   className={`flex flex-col items-center gap-2.5 rounded-2xl px-2 py-3 text-center transition-colors hover:bg-electric-500/5 ${

@@ -11,18 +11,22 @@ import { memo } from 'react'
 
 const HUES = [78, 96, 114, 168, 186, 202, 296, 326]
 
-/** "Aarav Mehta" -> "AM", "Aarav" -> "AR". */
+const seg =
+  typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter(undefined, { granularity: 'grapheme' }) : null
+/** First n visible characters (grapheme clusters, so Devanagari/emoji are not cut in half). */
+const head = (w, n) => (seg ? [...seg.segment(w)].slice(0, n).map((x) => x.segment) : [...w].slice(0, n)).join('')
+
+/** "Aarav Mehta" -> "AM", "Aarav" -> "AA", "\u092a\u094d\u0930\u0926\u0940\u092a \u0915\u0941\u092e\u093e\u0930" -> "\u092a\u0915". */
 export function initialsOf(name = '') {
   const words = String(name)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^A-Za-z0-9 ]/g, ' ')
+    .normalize('NFC')
+    .replace(/[^\p{L}\p{M}\p{N} ]/gu, ' ')
     .trim()
     .split(/\s+/)
     .filter(Boolean)
   if (!words.length) return '?'
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase()
-  return (words[0][0] + words[words.length - 1][0]).toUpperCase()
+  if (words.length === 1) return head(words[0], 2).toUpperCase()
+  return (head(words[0], 1) + head(words[words.length - 1], 1)).toUpperCase()
 }
 
 /** FNV-1a, 32-bit. */
@@ -69,12 +73,11 @@ export const Monogram = memo(function Monogram({ name = '', userId, size = 'md',
  */
 export function resolveHues(rows, key = (r) => r.id) {
   const seen = new Set()
-  let prev = -1
   return rows.map((r) => {
-    let h = hueFor(r.name, r.userId)
-    if (h === prev || seen.has(h)) h = (prev + 3) % HUES.length
-    prev = h
-    seen.add(h)
-    return { ...r, hue: HUES[h], monogram: initialsOf(r.name) || key(r) }
+    // palette INDICES throughout (the old code mixed hue degrees with indices)
+    let i = HUES.indexOf(hueFor(r.name, r.userId))
+    for (let n = 0; n < HUES.length && seen.has(i); n += 1) i = (i + 1) % HUES.length
+    seen.add(i)
+    return { ...r, hue: HUES[i], monogram: initialsOf(r.name) || key(r) }
   })
 }

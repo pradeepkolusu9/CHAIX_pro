@@ -9,7 +9,7 @@
  *   const { user, progress, level, streak, badges, actions, effects } = useStore()
  */
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react'
-import { storeGet, storeSet, storeClearAll, backendLabel, isCloud } from './storage.js'
+import { storeGet, storeSet, storeSetLocalSync, storeClearAll, backendLabel, isCloud } from './storage.js'
 import { BADGES, LEVELS, XP_RULES, levelForXp, moduleXpTotal } from './gamification.js'
 import { getModuleById, nextModule } from '../data/modules.js'
 import { todayKey, addDays, dayKeyList } from './dates.js'
@@ -25,7 +25,9 @@ import {
 /** Ledger and history are capped for storage sanity; the UI labels this honestly. */
 export const LEDGER_MAX = 40
 export const QUIZ_HISTORY_MAX = 30
-const uid = () => Math.random().toString(36).slice(2)
+// Monotonic, so two effects created in one tick can never share an id.
+let idSeq = 0
+const nextId = (prefix) => `${prefix}-${(idSeq += 1)}-${Math.random().toString(36).slice(2, 6)}`
 
 const StateCtx = createContext(null)
 const DispatchCtx = createContext(null)
@@ -61,6 +63,8 @@ function newProgress() {
     daily: { lastDone: null, totalDone: 0 },
     sixtySecond: { cleared: 0, best: 0, lastCleared: null, clearedToday: 0 },
     quizHistory: [],
+    // Lifetime quiz totals (quizHistory is capped, so it cannot give a lifetime figure).
+    quizTotals: { answered: 0, correct: 0, attempts: 0 },
     ledger: [], // { id, at, amount, reason, moduleId }
   }
 }
@@ -73,7 +77,8 @@ export function demoState() {
   // object key stringified it to "Tue Sep 29 2026 …", so the demo streak calendar
   // never lit up.
   for (let i = 0; i < 6; i += 1) activity[dayKeyList(addDays(new Date(), -i))] = true
-  for (const back of [7, 8, 9]) activity[dayKeyList(addDays(new Date(), -back))] = true
+  // Earlier 9-day run (days 7-15 back) so `longest: 9` is backed by real activity.
+  for (let back = 7; back <= 15; back += 1) activity[dayKeyList(addDays(new Date(), -back))] = true
 
   return {
     profile: {
@@ -90,18 +95,18 @@ export function demoState() {
           scenariosDone: ['sc-cy-1', 'sc-cy-2', 'sc-cy-3', 'sc-cy-4', 'sc-cy-5'],
           lessonsRead: ['ls-cy-1', 'ls-cy-2'],
           quizDone: true,
-          quizBest: 6,
+          quizBest: 7,
           quizTaken: 1,
-          correct: 6,
+          correct: 7,
           completed: true,
         },
         consumer: {
           scenariosDone: ['sc-co-1', 'sc-co-2', 'sc-co-3'],
           lessonsRead: ['ls-co-1'],
-          quizDone: false,
-          quizBest: 0,
-          quizTaken: 0,
-          correct: 0,
+          quizDone: true,
+          quizBest: 6,
+          quizTaken: 1,
+          correct: 6,
           completed: false,
         },
         road: {
@@ -128,11 +133,12 @@ export function demoState() {
       daily: { lastDone: dayKeyList(addDays(new Date(), -1)), totalDone: 4 },
       sixtySecond: { cleared: 1, best: 1, lastCleared: dayKeyList(addDays(new Date(), -2)), clearedToday: 0 },
       quizHistory: [
-        { moduleId: 'cybercrime', score: 6, total: 8, at: new Date(Date.now() - 3 * 864e5).toISOString() },
-        { moduleId: 'consumer', score: 6, total: 10, at: new Date(Date.now() - 1 * 864e5).toISOString() },
+        { moduleId: 'cybercrime', score: 7, total: 8, at: new Date(Date.now() - 3 * 864e5).toISOString() },
+        { moduleId: 'consumer', score: 6, total: 8, at: new Date(Date.now() - 1 * 864e5).toISOString() },
       ],
+      quizTotals: { answered: 16, correct: 13, attempts: 2 },
       ledger: [
-        { id: 'l1', at: new Date(Date.now() - 1 * 864e5).toISOString(), amount: 125, reason: 'Quiz answers — Consumer Rights', moduleId: 'consumer' },
+        { id: 'l1', at: new Date(Date.now() - 1 * 864e5).toISOString(), amount: 150, reason: 'Quiz answers — Consumer Rights', moduleId: 'consumer' },
         { id: 'l2', at: new Date(Date.now() - 2 * 864e5).toISOString(), amount: 100, reason: '60-Second Rights Challenge', moduleId: null },
         { id: 'l3', at: new Date(Date.now() - 3 * 864e5).toISOString(), amount: 150, reason: 'Module completed — Cybercrime & Online Safety', moduleId: 'cybercrime' },
         { id: 'l4', at: new Date(Date.now() - 5 * 864e5).toISOString(), amount: 200, reason: '7-day streak bonus', moduleId: null },
@@ -155,7 +161,11 @@ function syncBadges(state) {
     .map((b) => b.id)
   return {
     ...state,
-    progress: { ...state.progress, badges: unlocked },
+    progress: {
+      ...state.progress,
+      badges: unlocked,
+      streak: recomputeStreak(state.progress.streak), // never show a stale streak on load
+    },
   }
 }
 
@@ -170,7 +180,9 @@ function moduleStats(progress, id) {
   const lessonsRead = rec.lessonsRead?.length || 0
   const units = lessonTotal + scenarioTotal + quizTotal
   const done = lessonsRead + scenariosDone + (rec.quizDone ? quizTotal : 0)
-  const pct = units ? Math.round((done / units) * 100) : 0
+  const computed = units ? Math.round((done / units) * 100) : 0
+  // Activities done but quiz failed must not read 100.
+  const pct = rec.completed ? 100 : Math.min(99, computed)
   return {
     id,
     scenariosDone,
@@ -248,16 +260,19 @@ function impactOf(progress) {
   const lessonsCompleted = vals.reduce((a, s) => a + s.lessonsRead, 0)
   const scenariosDone = vals.reduce((a, s) => a + s.scenariosDone, 0)
   const modulesDone = MODULE_IDS.filter((id) => stats[id].completed).length
-  const answered = progress.quizHistory.reduce((a, q) => a + q.total, 0)
-  const correct = progress.quizHistory.reduce((a, q) => a + q.score, 0)
+  const t = progress.quizTotals || { answered: 0, correct: 0, attempts: 0 }
+  const answered = t.answered || 0
+  const correct = t.correct || 0
   const quizAccuracy = answered ? Math.round((correct / answered) * 100) : 0
   return {
     lessonsCompleted,
     scenariosDone,
     modulesDone,
     modulesTotal: MODULE_IDS.length,
-    quizAccuracy,
-    quizzesTaken: progress.quizHistory.length,
+    quizAccuracy, // lifetime: correct / answered across every attempt
+    quizAnswered: answered,
+    quizCorrect: correct,
+    quizzesTaken: t.attempts || progress.quizHistory.length,
     badges: progress.badges.length,
     streak: progress.streak.current || 0,
     xp: progress.xp,
@@ -268,12 +283,37 @@ function impactOf(progress) {
 }
 
 // -------------------------------------------------------------------- provider
+/** Merge a persisted record over defaults, backfilling fields added since it was saved. */
+function hydrateState(raw) {
+  const progress = { ...newProgress(), ...raw.progress }
+  if (!progress.quizTotals) {
+    const h = progress.quizHistory || []
+    progress.quizTotals = {
+      answered: h.reduce((a, q) => a + q.total, 0),
+      correct: h.reduce((a, q) => a + q.score, 0),
+      attempts: h.length,
+    }
+  }
+  return syncBadges({ profile: raw.profile, progress })
+}
+
 export function StoreProvider({ children }) {
   const [state, setState] = useState(emptyState)
   const [ready, setReady] = useState(false)
   const [effects, setEffects] = useState([])
   const [toasts, setToasts] = useState([])
   const saveTimer = useRef(null)
+  // Mirrors the latest committed state so actions read fresh data and compute
+  // their result purely, instead of doing side effects inside setState updaters.
+  const stateRef = useRef(state)
+  const readyRef = useRef(false)
+
+  /** The only place state changes: ref first, then React state and effects, once. */
+  const commit = useCallback((next, fx = []) => {
+    stateRef.current = next
+    setState(next)
+    if (fx.length) setEffects((e) => [...e, ...fx])
+  }, [])
 
   // hydrate
   useEffect(() => {
@@ -281,52 +321,67 @@ export function StoreProvider({ children }) {
     ;(async () => {
       try {
         const raw = await storeGet('app')
-        if (alive && raw && raw.profile) {
-          setState(syncBadges({ profile: raw.profile, progress: { ...newProgress(), ...raw.progress } }))
-        }
+        if (alive && raw && raw.profile && !stateRef.current.profile) commit(hydrateState(raw))
       } catch (err) {
         console.warn('[lawlink] hydrate failed', err)
       } finally {
-        if (alive) setReady(true)
+        if (alive) {
+          readyRef.current = true
+          setReady(true)
+        }
       }
     })()
     return () => {
       alive = false
     }
-  }, [])
+  }, [commit])
 
   // debounced persist
   useEffect(() => {
-    if (!ready) return
+    if (!ready) return undefined
     clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      storeSet('app', state).catch((e) => console.warn('[lawlink] save failed', e))
+      storeSet('app', stateRef.current).catch((e) => console.warn('[lawlink] save failed', e))
     }, 220)
     return () => clearTimeout(saveTimer.current)
   }, [state, ready])
 
+  // synchronous flush so a change made <220ms before the tab closes is never lost
+  useEffect(() => {
+    const flush = () => {
+      if (readyRef.current) storeSetLocalSync('app', stateRef.current)
+    }
+    const onVis = () => {
+      if (document.visibilityState === 'hidden') flush()
+    }
+    window.addEventListener('pagehide', flush)
+    document.addEventListener('visibilitychange', onVis)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      document.removeEventListener('visibilitychange', onVis)
+    }
+  }, [])
+
   // streak decay when the app stays open across midnight
   useEffect(() => {
     if (!ready) return undefined
-    const tick = () =>
-      setState((s) =>
-        s.profile
-          ? {
-              profile: s.profile,
-              progress: { ...s.progress, streak: recomputeStreak(s.progress.streak) },
-            }
-          : s,
-      )
+    const tick = () => {
+      const s = stateRef.current
+      if (!s.profile) return
+      const streak = recomputeStreak(s.progress.streak)
+      if (streak === s.progress.streak) return // unchanged: no state change, no write
+      commit({ profile: s.profile, progress: { ...s.progress, streak } })
+    }
     const id = setInterval(tick, 60_000)
     window.addEventListener('focus', tick)
     return () => {
       clearInterval(id)
       window.removeEventListener('focus', tick)
     }
-  }, [ready])
+  }, [ready, commit])
 
   const pushToast = useCallback((toast) => {
-    const id = Math.random().toString(36).slice(2)
+    const id = nextId('toast')
     setToasts((t) => [...t, { id, ...toast }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), toast.duration || 3200)
   }, [])
@@ -339,33 +394,36 @@ export function StoreProvider({ children }) {
 
     /**
      * The single XP entry point. Every reward in the app goes through here so
-     * level-ups, badges and streaks are impossible to forget.
+     * level-ups, badges and streaks are impossible to forget. Pure: returns the
+     * next state and the effects to show; the caller commits them.
      *
-     * Note the streak bonus is applied to the RETURNED state, not just announced.
-     * It used to be pushed into the effect queue while the computed state was
-     * discarded, so the "+200 XP" appeared and the XP never landed.
+     * The streak bonus is applied to the RETURNED state, not just announced.
+     * A 0-amount award writes no ledger row (it only records the activity).
      */
     const award = (state, { amount, reason, moduleId = null, silent = false, refId = null }) => {
       const before = levelForXp(state.progress.xp)
       const { streak, milestone } = touchStreak(state.progress)
-      const ledger = [
-        { id: uid(), at: new Date().toISOString(), amount, reason, moduleId, refId },
-        ...state.progress.ledger,
-      ].slice(0, LEDGER_MAX)
+      const ledger =
+        amount === 0
+          ? state.progress.ledger
+          : [
+              { id: nextId('l'), at: new Date().toISOString(), amount, reason, moduleId, refId },
+              ...state.progress.ledger,
+            ].slice(0, LEDGER_MAX)
 
       let next = {
         profile: state.profile,
         progress: { ...state.progress, xp: state.progress.xp + amount, streak, ledger },
       }
       const newEffects = []
-      if (!silent) {
-        newEffects.push({ id: `xp-${Date.now()}`, kind: 'xp', amount, reason })
+      if (!silent && amount > 0) {
+        newEffects.push({ id: nextId('xp'), kind: 'xp', amount, reason })
       }
 
       const after = levelForXp(next.progress.xp)
       if (after.level > before.level) {
         newEffects.push({
-          id: `lvl-${Date.now()}`,
+          id: nextId('lvl'),
           kind: 'levelup',
           from: before,
           to: after,
@@ -382,16 +440,16 @@ export function StoreProvider({ children }) {
             ...next.progress,
             xp: next.progress.xp + bonus,
             ledger: [
-              { id: uid(), at: new Date().toISOString(), amount: bonus, reason: `${streak.current}-day streak bonus`, moduleId: null },
+              { id: nextId('l'), at: new Date().toISOString(), amount: bonus, reason: `${streak.current}-day streak bonus`, moduleId: null },
               ...next.progress.ledger,
             ].slice(0, LEDGER_MAX),
           },
         }
-        newEffects.push({ id: `st-${Date.now()}`, kind: 'streak', amount: bonus, days: streak.current })
+        newEffects.push({ id: nextId('st'), kind: 'streak', amount: bonus, days: streak.current })
         const post = levelForXp(next.progress.xp)
         if (post.level > mid.level) {
           newEffects.push({
-            id: `lvl-st-${Date.now()}`,
+            id: nextId('lvl'),
             kind: 'levelup',
             from: mid,
             to: post,
@@ -403,129 +461,110 @@ export function StoreProvider({ children }) {
       return { next, newEffects }
     }
 
-    const withBadges = (state) => {
-      const derived = deriveBadges(state.progress)
-      const owned = new Set(state.progress.badges)
+    /** Derive badges, add their effects, then commit exactly once. */
+    const finish = (next, fx) => {
+      const derived = deriveBadges(next.progress)
+      const owned = new Set(next.progress.badges)
       const fresh = derived.filter((b) => b.unlocked && !owned.has(b.id))
-      if (!fresh.length) return { state, fresh: [] }
-      return {
-        state: {
-          ...state,
-          progress: {
-            ...state.progress,
-            badges: [...state.progress.badges, ...fresh.map((b) => b.id)],
-          },
-        },
-        fresh,
+      let out = next
+      if (fresh.length) {
+        out = {
+          ...next,
+          progress: { ...next.progress, badges: [...next.progress.badges, ...fresh.map((b) => b.id)] },
+        }
+        fresh.forEach((b) => fx.push({ id: nextId(`bd-${b.id}`), kind: 'badge', badge: b }))
       }
+      commit(out, fx)
     }
 
-    const applyBadgeEffects = (newEffects, fresh) => {
-      fresh.forEach((b) =>
-        newEffects.push({ id: `bd-${b.id}-${Date.now()}`, kind: 'badge', badge: b }),
-      )
-    }
+    const setModule = (state, moduleId, patch) => ({
+      profile: state.profile,
+      progress: {
+        ...state.progress,
+        modules: {
+          ...state.progress.modules,
+          [moduleId]: { ...(state.progress.modules[moduleId] || {}), ...patch },
+        },
+      },
+    })
 
     return {
       async login(name, extra = {}) {
-        setState({ profile: { ...newProfile(name || 'Learner'), ...extra }, progress: newProgress() })
+        commit({ profile: { ...newProfile(name || 'Learner'), ...extra }, progress: newProgress() })
         pushToast({ title: 'Welcome to LawLink', body: 'Your legal journey starts now.', tone: 'electric' })
       },
 
       async logout() {
-        setState(emptyState())
+        commit(emptyState())
         await storeClearAll()
       },
 
       async loadDemo() {
-        setState(syncBadges(demoState()))
+        commit(syncBadges(demoState()))
         pushToast({ title: 'Demo mode loaded', body: 'Chaitanya · Level 4 · 1,850 XP · 6 day streak', tone: 'xp' })
       },
 
       async resetProgress() {
-        setState((s) => ({ profile: s.profile, progress: newProgress() }))
+        const s = stateRef.current
+        commit({ profile: s.profile, progress: newProgress() })
         pushToast({ title: 'Progress reset', body: 'Fresh journey. All XP and badges cleared.', tone: 'danger' })
       },
 
       async updateProfile(patch) {
-        setState((s) => ({ ...s, profile: { ...s.profile, ...patch } }))
+        const s = stateRef.current
+        commit({ ...s, profile: { ...s.profile, ...patch } })
       },
 
       /** Read a short lesson card. */
-      async readLesson(moduleId, lessonId) {
-        setState((s) => {
-          if (!s.profile) return s
-          const rec = s.progress.modules[moduleId] || {}
-          if (rec.lessonsRead?.includes(lessonId)) return s
-          const r = award(s, {
-            amount: XP_RULES.lessonRead,
-            reason: 'Lesson read',
-            moduleId,
-            refId: lessonId,
-          })
-          r.newEffects.push({ id: `ls-${Date.now()}`, kind: 'hint', amount: XP_RULES.lessonRead, reason: 'Lesson read' })
-          const withM = {
-            profile: r.next.profile,
-            progress: {
-              ...r.next.progress,
-              modules: {
-                ...r.next.progress.modules,
-                [moduleId]: { ...rec, lessonsRead: [...(rec.lessonsRead || []), lessonId] },
-              },
-            },
-          }
-          const b = withBadges(withM)
-          applyBadgeEffects(r.newEffects, b.fresh)
-          setEffects((e) => [...e, ...r.newEffects])
-          return b.state
-        })
+      readLesson(moduleId, lessonId) {
+        const s = stateRef.current
+        if (!s.profile) return
+        const rec = s.progress.modules[moduleId] || {}
+        if (rec.lessonsRead?.includes(lessonId)) return
+        const r = award(s, { amount: XP_RULES.lessonRead, reason: 'Lesson read', moduleId, refId: lessonId })
+        r.newEffects.push({ id: nextId('ls'), kind: 'hint', amount: XP_RULES.lessonRead, reason: 'Lesson read' })
+        finish(setModule(r.next, moduleId, { lessonsRead: [...(rec.lessonsRead || []), lessonId] }), r.newEffects)
       },
 
       /** Finish a scenario (right or wrong — you always learn). */
-      async completeScenario(moduleId, scenarioId, correct) {
-        setState((s) => {
-          if (!s.profile) return s
-          const rec = s.progress.modules[moduleId] || {}
-          if (rec.scenariosDone?.includes(scenarioId)) return s
-          const r = award(s, {
-            amount: XP_RULES.scenario,
-            reason: correct ? 'Scenario cleared' : 'Scenario completed',
-            moduleId,
-            refId: scenarioId,
-          })
-          const withM = {
-            profile: r.next.profile,
-            progress: {
-              ...r.next.progress,
-              modules: {
-                ...r.next.progress.modules,
-                [moduleId]: { ...rec, scenariosDone: [...(rec.scenariosDone || []), scenarioId] },
-              },
-            },
-          }
-          const b = withBadges(withM)
-          applyBadgeEffects(r.newEffects, b.fresh)
-          setEffects((e) => [...e, ...r.newEffects])
-          return b.state
+      completeScenario(moduleId, scenarioId, correct) {
+        const s = stateRef.current
+        if (!s.profile) return
+        const rec = s.progress.modules[moduleId] || {}
+        if (rec.scenariosDone?.includes(scenarioId)) return
+        const r = award(s, {
+          amount: XP_RULES.scenario,
+          reason: correct ? 'Scenario cleared' : 'Scenario completed',
+          moduleId,
+          refId: scenarioId,
         })
+        finish(setModule(r.next, moduleId, { scenariosDone: [...(rec.scenariosDone || []), scenarioId] }), r.newEffects)
       },
 
-      /** Submit a full quiz. Awards XP per correct answer plus topic completion when the module closes. */
-      async completeQuiz(moduleId, correctCount, total) {
-        setState((s) => {
-          if (!s.profile) return s
-          const rec = s.progress.modules[moduleId] || {}
-          const already = rec.quizDone
-          const { passes, awardsTopicCompletion } = quizCompletion({
-            score: correctCount,
-            total,
-            previouslyCompleted: rec.completed,
-          })
-          // Per-answer XP is once per module; a quiz cannot be farmed by retaking.
-          const amount = quizAnswerXp({ score: correctCount, alreadyTaken: already })
-          const best = Math.max(rec.quizBest || 0, correctCount)
+      /**
+       * Submit a full quiz. Awards XP per correct answer (first attempt only) plus
+       * topic completion when the module closes.
+       * Returns { wasDone, prevBest, wasCompleted, xpGained, newlyCompleted } computed
+       * from the state as it was BEFORE this attempt, or null when signed out.
+       */
+      completeQuiz(moduleId, correctCount, total) {
+        const s = stateRef.current
+        if (!s.profile) return null
+        const rec = s.progress.modules[moduleId] || {}
+        const wasDone = Boolean(rec.quizDone)
+        const prevBest = rec.quizBest || 0
+        const wasCompleted = Boolean(rec.completed)
+        const { passes, awardsTopicCompletion } = quizCompletion({
+          score: correctCount,
+          total,
+          previouslyCompleted: wasCompleted,
+        })
+        // Per-answer XP is once per module; a quiz cannot be farmed by retaking.
+        const amount = quizAnswerXp({ score: correctCount, alreadyTaken: wasDone })
+        const totals = s.progress.quizTotals || { answered: 0, correct: 0, attempts: 0 }
 
-          const base = {
+        let next = setModule(
+          {
             profile: s.profile,
             progress: {
               ...s.progress,
@@ -533,105 +572,93 @@ export function StoreProvider({ children }) {
                 { moduleId, score: correctCount, total, at: new Date().toISOString() },
                 ...s.progress.quizHistory,
               ].slice(0, QUIZ_HISTORY_MAX),
-              modules: {
-                ...s.progress.modules,
-                [moduleId]: {
-                  ...rec,
-                  quizDone: true,
-                  quizTaken: (rec.quizTaken || 0) + 1,
-                  quizBest: best,
-                  correct: Math.max(rec.correct || 0, correctCount),
-                },
+              quizTotals: {
+                answered: (totals.answered || 0) + total,
+                correct: (totals.correct || 0) + correctCount,
+                attempts: (totals.attempts || 0) + 1,
               },
             },
-          }
+          },
+          moduleId,
+          {
+            quizDone: true,
+            quizTaken: (rec.quizTaken || 0) + 1,
+            quizBest: Math.max(prevBest, correctCount),
+            correct: Math.max(rec.correct || 0, correctCount),
+          },
+        )
 
-          const effects = []
-          let next = base
-          if (amount > 0) {
-            const r = award(base, {
-              amount,
-              reason: `${correctCount}/${total} correct — quiz`,
-              moduleId,
-            })
-            next = r.next
-            effects.push(...r.newEffects)
-          }
-          // A module completes on ANY attempt that reaches 80%. The previous
-          // version required the FIRST attempt to pass, so failing once made the
-          // module permanently uncompletable and every later module stayed locked.
-          if (awardsTopicCompletion) {
-            const r2 = award(next, {
-              amount: XP_RULES.topicComplete,
-              reason: 'Module completed',
-              moduleId,
-            })
-            next = r2.next
-            effects.push(...r2.newEffects)
-            next = {
-              profile: next.profile,
-              progress: {
-                ...next.progress,
-                modules: {
-                  ...next.progress.modules,
-                  [moduleId]: { ...(next.progress.modules[moduleId] || {}), completed: true },
-                },
-              },
-            }
-          } else if (passes) {
-            // Already completed on an earlier attempt — nothing more to award.
-            next = {
-              profile: next.profile,
-              progress: {
-                ...next.progress,
-                modules: {
-                  ...next.progress.modules,
-                  [moduleId]: { ...(next.progress.modules[moduleId] || {}), completed: true },
-                },
-              },
-            }
-          }
-          const b = withBadges(next)
-          applyBadgeEffects(effects, b.fresh)
-          setEffects((e) => [...e, ...effects])
-          return b.state
-        })
+        const fx = []
+        if (amount > 0) {
+          const r = award(next, { amount, reason: `${correctCount}/${total} correct — quiz`, moduleId })
+          next = r.next
+          fx.push(...r.newEffects)
+        }
+        // A module completes on ANY attempt that reaches 80%.
+        if (awardsTopicCompletion) {
+          const r2 = award(next, { amount: XP_RULES.topicComplete, reason: 'Module completed', moduleId })
+          next = r2.next
+          fx.push(...r2.newEffects)
+        }
+        if (passes) next = setModule(next, moduleId, { completed: true })
+        finish(next, fx)
+        return {
+          wasDone,
+          prevBest,
+          wasCompleted,
+          xpGained: amount + (awardsTopicCompletion ? XP_RULES.topicComplete : 0),
+          newlyCompleted: awardsTopicCompletion,
+        }
       },
 
-      async completeDaily() {
-        setState((s) => {
-          if (!s.profile) return s
-          const t = todayKey()
-          if (s.progress.daily.lastDone === t) return s
-          const r = award(s, { amount: XP_RULES.dailyChallenge, reason: 'Daily challenge cleared' })
-          const next = {
+      /**
+       * Daily challenge. `correct=true` pays once per day. `correct=false` only
+       * records the attempt (daily.lastAttempt): no XP, not a win, retry allowed.
+       */
+      completeDaily(correct = true) {
+        const s = stateRef.current
+        if (!s.profile) return false
+        const t = todayKey()
+        if (s.progress.daily.lastDone === t) return false
+        if (!correct) {
+          if (s.progress.daily.lastAttempt !== t) {
+            commit({
+              profile: s.profile,
+              progress: { ...s.progress, daily: { ...s.progress.daily, lastAttempt: t } },
+            })
+          }
+          return false
+        }
+        const r = award(s, { amount: XP_RULES.dailyChallenge, reason: 'Daily challenge cleared' })
+        finish(
+          {
             profile: r.next.profile,
             progress: {
               ...r.next.progress,
-              daily: { lastDone: t, totalDone: (s.progress.daily.totalDone || 0) + 1 },
+              daily: { ...s.progress.daily, lastDone: t, lastAttempt: t, totalDone: (s.progress.daily.totalDone || 0) + 1 },
             },
-          }
-          const b = withBadges(next)
-          applyBadgeEffects(r.newEffects, b.fresh)
-          setEffects((e) => [...e, ...r.newEffects])
-          return b.state
-        })
+          },
+          r.newEffects,
+        )
+        return true
       },
 
-      async clearSixtySecond(score) {
-        setState((s) => {
-          if (!s.profile) return s
-          const prev = s.progress.sixtySecond || {}
-          const clearedToday = prev.lastCleared === todayKey() ? prev.clearedToday || 0 : 0
-          // Capped per day: the 60-second run is a skill check, not a faucet.
-          const amount = sixtySecondXp({ clearedToday })
-          const r = award(s, {
-            amount,
-            reason: amount > 0 ? '60-Second Rights Challenge' : '60-second run (daily XP cap reached)',
-            silent: amount === 0,
-            refId: '60s',
-          })
-          const next = {
+      /** 60-second run. Only a scoring run (score > 0) pays XP or counts as a clear. */
+      clearSixtySecond(score) {
+        const s = stateRef.current
+        if (!s.profile || !(score > 0)) return false
+        const prev = s.progress.sixtySecond || {}
+        const clearedToday = prev.lastCleared === todayKey() ? prev.clearedToday || 0 : 0
+        // Capped per day: the 60-second run is a skill check, not a faucet.
+        const amount = sixtySecondXp({ clearedToday })
+        const r = award(s, {
+          amount,
+          reason: amount > 0 ? '60-Second Rights Challenge' : '60-second run (daily XP cap reached)',
+          silent: amount === 0,
+          refId: '60s',
+        })
+        finish(
+          {
             profile: r.next.profile,
             progress: {
               ...r.next.progress,
@@ -642,17 +669,15 @@ export function StoreProvider({ children }) {
                 clearedToday: clearedToday + 1,
               },
             },
-          }
-          const b = withBadges(next)
-          applyBadgeEffects(r.newEffects, b.fresh)
-          setEffects((e) => [...e, ...r.newEffects])
-          return b.state
-        })
+          },
+          r.newEffects,
+        )
+        return true
       },
 
       pushToast,
     }
-  }, [pushToast])
+  }, [pushToast, commit])
 
   // module unlock: a module opens once the previous one on the journey is complete
   const unlocked = useMemo(() => {
@@ -699,7 +724,7 @@ export function StoreProvider({ children }) {
       stats: derived?.stats || {},
       week: derived?.week || [],
       unlocked,
-      nextModuleId: MODULE_IDS.find((id) => unlocked[id]) || null,
+      nextModuleId: MODULE_IDS.find((id) => unlocked[id] && !derived?.stats?.[id]?.completed) || null,
       firstLockedId: MODULE_IDS.find((id) => !unlocked[id]) || null,
       nextBadge: (derived?.badges || []).find((b) => !b.unlocked) || null,
     }),

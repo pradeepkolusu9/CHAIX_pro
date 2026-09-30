@@ -473,12 +473,17 @@ export default function Assistant() {
   }, [messages.length, pending])
 
   /* The answer arrives silently, so announce the legal area and the first action. */
-  const lastAnswer = messages[messages.length - 1]?.reply
+  const lastMsg = messages[messages.length - 1]
   useEffect(() => {
-    if (!lastAnswer) return
-    const first = lastAnswer.steps?.[0]?.text
-    say(`${lastAnswer.area}. ${lastAnswer.meaning} ${first ? `First step: ${first}` : ''}`.trim())
-  }, [lastAnswer, say])
+    if (lastMsg?.role !== 'ai') return
+    const r = lastMsg.reply
+    if (!r) {
+      say('No verified match. I answer only from a checked knowledge base. Pick an area, or describe what happened.')
+      return
+    }
+    const first = r.steps?.[0]?.text
+    say(`${r.area}. ${r.meaning} ${first ? `First step: ${first}` : ''}`.trim())
+  }, [lastMsg, say])
 
   /* auto-grow to four rows */
   useEffect(() => {
@@ -511,7 +516,7 @@ export default function Assistant() {
   }
 
   const onKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
       ask(draft)
     }
@@ -587,7 +592,7 @@ export default function Assistant() {
       </div>
 
       {/* ----------------------------------------------------- composer */}
-      <div className="safe-b sticky bottom-[64px] z-20 sm:bottom-0">
+      <div className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-20 lg:bottom-0 lg:pb-[env(safe-area-inset-bottom)]">
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 top-0 -z-10 bg-surface-0" />
 
         {!empty && (
@@ -604,6 +609,7 @@ export default function Assistant() {
               ref={taRef}
               value={draft}
               rows={1}
+              maxLength={500}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder="Describe what happened in plain words…"
@@ -634,9 +640,9 @@ export default function Assistant() {
         </div>
 
         <p className="caption px-1 pb-1 pt-2 text-center">
-          <Link to="/emergency" className="font-semibold text-danger hover:underline">
+          <a href="tel:112" className="font-semibold text-danger hover:underline">
             In danger? Call 112.
-          </Link>{' '}
+          </a>{' '}
           Answers are awareness, not legal advice.
         </p>
       </div>

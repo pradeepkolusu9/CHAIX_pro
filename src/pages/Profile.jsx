@@ -195,7 +195,7 @@ export default function Profile() {
         </div>
       </motion.div>
 
-      <div className="grid gap-x-12 gap-y-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-x-12 gap-y-12 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         {/* ---------------------------------------------- left */}
         <div className="space-y-12">
           <motion.section {...rise(0.05)}>
@@ -204,17 +204,17 @@ export default function Profile() {
               items={[
                 { label: 'Lessons', value: impact.lessonsCompleted },
                 {
-                  label: 'Quiz accuracy',
-                  value: impact.quizAccuracy,
-                  suffix: '%',
-                  tone: impact.quizAccuracy >= 80 ? 'good' : impact.quizAccuracy < 40 ? 'warn' : undefined,
+                  label: 'Lifetime accuracy',
+                  value: impact.quizAnswered ? impact.quizAccuracy : '—',
+                  suffix: impact.quizAnswered ? '%' : undefined,
+                  tone: !impact.quizAnswered ? undefined : impact.quizAccuracy >= 80 ? 'good' : impact.quizAccuracy < 40 ? 'warn' : undefined,
                 },
                 { label: 'Modules', value: impact.modulesDone, suffix: `/${impact.modulesTotal}` },
                 { label: 'Badges', value: badgesEarned, tone: 'xp' },
               ]}
             />
             <p className="caption mt-4">
-              {impact.quizzesTaken} quiz{impact.quizzesTaken === 1 ? '' : 'zes'} submitted, {badgesEarned} of {BADGES.length} badges.
+              {impact.quizzesTaken} quiz{impact.quizzesTaken === 1 ? '' : 'zes'} submitted, {impact.quizCorrect} of {impact.quizAnswered} answers right, {badgesEarned} of {BADGES.length} badges.
             </p>
           </motion.section>
 
@@ -271,7 +271,7 @@ export default function Profile() {
                 {week.map((d) => (
                   <div key={d.date} title={d.date} className="flex min-w-0 flex-col items-center gap-1.5">
                     <span
-                      className={`grid h-10 w-10 place-items-center rounded-full ${
+                      className={`grid aspect-square w-full max-w-[40px] min-w-0 place-items-center rounded-full ${
                         d.done ? 'tile tile-warn' : d.future ? 'bg-white/[0.05]' : 'bg-white/[0.12]'
                       }`}
                     >
@@ -394,7 +394,7 @@ export default function Profile() {
             <p className="copy measure mt-3">
               {cloud
                 ? 'Progress is written to one private cloud row and mirrored in this browser. If the cloud is unreachable the app falls back to local storage and says so.'
-                : 'Everything is stored in this browser only. Nothing is uploaded, and clearing site data or switching device starts a fresh journey.'}
+                : 'Your progress and account data are stored in this browser only, and clearing site data or switching device starts a fresh journey.'}
             </p>
             <p className="caption measure mt-2">
               Resetting clears XP, streaks, badges, quiz history and module progress but keeps your name. Signing out removes the account from this device.
