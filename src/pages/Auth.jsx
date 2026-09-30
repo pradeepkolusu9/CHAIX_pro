@@ -20,7 +20,6 @@ import {
   Lock,
   User,
   UserCheck,
-  UserPlus,
   GraduationCap,
   ArrowRight,
   Target,

@@ -7,8 +7,6 @@ import {
   Award,
   Bot,
   Siren,
-  Search,
-  User,
   Timer,
   Shield,
 } from 'lucide-react'

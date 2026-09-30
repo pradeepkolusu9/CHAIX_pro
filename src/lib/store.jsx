@@ -10,8 +10,8 @@
  */
 import { createContext, useContext, useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { storeGet, storeSet, storeClearAll, backendLabel, isCloud } from './storage.js'
-import { BADGES, LEVELS, XP_RULES, levelForXp, moduleXpTotal, TOTAL_MODULES } from './gamification.js'
-import { getModuleById, nextModule, MODULES } from '../data/modules.js'
+import { BADGES, LEVELS, XP_RULES, levelForXp, moduleXpTotal } from './gamification.js'
+import { getModuleById, nextModule } from '../data/modules.js'
 import { todayKey, addDays, dayKeyList } from './dates.js'
 import {
   touchStreak as touchStreakPure,

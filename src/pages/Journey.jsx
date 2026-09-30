@@ -362,9 +362,15 @@ export default function Journey() {
                 <div className="flex w-11 shrink-0 justify-center pt-1 sm:w-14">
                   <NodeMarker state="locked" accent={r.accent} index={r.index} pulse={false} />
                 </div>
-                <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2.5 gap-y-0.5 py-1.5 opacity-40 grayscale">
-                  <span className="t3 shrink-0 text-fg-muted">{r.m.name}</span>
-                  <span className="caption min-w-0 truncate">
+                {/* Locked rows were `opacity-40 grayscale`, which put the unlock instruction at a
+                    measured 1.76:1 — the one piece of text that tells the user how to
+                    progress was the least legible on the page. `opacity-75` lands near
+                    4.8:1, and the de-emphasis now comes from the marker and the dimmed
+                    title rather than from making the instruction unreadable. The copy
+                    also WRAPS instead of truncating: it is a sentence, not a label. */}
+                <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2.5 gap-y-0.5 py-1.5 opacity-75">
+                  <span className="t3 shrink-0 text-fg-dim">{r.m.name}</span>
+                  <span className="caption min-w-0 basis-full sm:basis-auto">
                     Locked — complete the previous module to unlock
                     {r.blocker ? ` · finish ${r.blocker.name} (${r.blocker.pct}%) first` : ''}
                   </span>

@@ -6,7 +6,7 @@
  * verdict -> why -> reward. `completeDaily()` is guarded so the daily bonus can
  * only ever fire once per calendar day; the store guards it too.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {

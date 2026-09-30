@@ -24,13 +24,19 @@ export default [
       // The new JSX transform makes these obsolete.
       'react/react-in-jsx-scope': 'off',
       'react/prop-types': 'off',
+      // A stray apostrophe in copy is not a correctness problem, and `&rsquo;`
+      // in a string literal is worse than a bare quote. Curly-quote it instead.
+      'react/no-unescaped-entities': 'off',
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-empty': ['error', { allowEmptyCatch: true }],
     },
   },
   {
-    // Data + config files are plain JS with no React.
-    files: ['src/data/**/*.js', 'src/lib/gamification.js', 'vite.config.js', 'tailwind.config.js'],
-    rules: { 'no-undef': 'error' },
+    // One-off maintenance scripts. These are `.cjs` CommonJS, so they are the only
+    // files in the repo that are NOT modules — and the only ones that need the
+    // Node globals. The build configs stay ESM: `package.json` sets
+    // "type": "module", so `vite.config.js` legitimately uses `import`/`export`.
+    files: ['scripts/**/*.cjs'],
+    languageOptions: { sourceType: 'commonjs', globals: globals.node },
   },
 ]

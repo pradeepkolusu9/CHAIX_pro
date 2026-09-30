@@ -19,6 +19,7 @@ export function AnnouncerProvider({ children }) {
   const [assertive, setAssertive] = useState('')
   const timers = useRef({ polite: null, assertive: null })
 
+  // Unmount with a pending announcement in flight must not fire into a dead tree.
   useEffect(
     () => () => {
       clearTimeout(timers.current.polite)

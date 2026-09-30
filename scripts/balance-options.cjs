@@ -73,8 +73,6 @@ for (const f of files) {
 
   // The file is a plain object literal; evaluating it is the only reliable way
   // to reach every scenario, including ones whose formatting has drifted.
-  const mod = { default: null }
-  // eslint-disable-next-line no-new-func
   const data = new Function(`${file.replace(/^export default/, 'return')}`)()
   if (!data?.scenarios) continue
 
@@ -146,9 +144,7 @@ for (const f of files) {
     for (const sc of data.scenarios) {
       for (const o of sc.options) {
         const esc = o.text.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
-        // Match this scenario's specific option line by its id + original-ish text.
-        const re = new RegExp(`(\\{ id: '${o.id}', text: ')[^']*(' \\})`)
-        // Only the first match inside this scenario's options array.
+        // Locate this scenario's options array, then this option's first line.
         const idx = out.indexOf(`id: '${sc.id}',`)
         if (idx === -1) continue
         const optIdx = out.indexOf(`{ id: '${o.id}', text: '`, idx)

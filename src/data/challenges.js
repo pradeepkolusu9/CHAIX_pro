@@ -4,11 +4,13 @@
  * show content that the lesson flow does not also show.
  */
 import { allScenarios } from './modules.js'
-import { todayKey } from '../lib/dates.js'
 
-/** Deterministic daily pick — stable for the whole day across reloads. */
+/**
+ * Deterministic daily pick — stable for the whole day across reloads, and the
+ * same scenario on every device on a given date. Derived from the calendar
+ * rather than a rotating counter, so it cannot drift if the module order changes.
+ */
 export function dailyChallenge(date = new Date()) {
-  const key = todayKey()
   const seed = date.getFullYear() * 372 + (date.getMonth() + 1) * 31 + date.getDate()
   return allScenarios[seed % allScenarios.length]
 }

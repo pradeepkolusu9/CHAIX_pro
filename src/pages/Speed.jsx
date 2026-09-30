@@ -38,6 +38,9 @@ const LETTERS = ['A', 'B', 'C', 'D']
 const RUN_MS = 60_000
 const RING_R = 54
 const RING_C = 2 * Math.PI * RING_R
+
+/** Shared identity for "no stats for this module yet". See the useMemo note below. */
+const EMPTY_STAT = Object.freeze({})
 const HAND = 32
 const two = (n) => String(Math.max(0, Math.min(60, n))).padStart(2, '0')
 
@@ -247,7 +250,6 @@ export default function Speed() {
 
   const [phase, setPhase] = useState('intro') // intro | play | result
   const [sc, setSc] = useState(null)
-  const [round, setRound] = useState(0)
   const [startAt, setStartAt] = useState(0)
   const [deadline, setDeadline] = useState(0)
   const [picked, setPicked] = useState(null)
@@ -311,7 +313,6 @@ export default function Speed() {
     const t = Date.now()
     setStartAt(t)
     setDeadline(t + RUN_MS)
-    setRound((r) => r + 1)
     setPhase('play')
   }, [])
 
@@ -357,7 +358,10 @@ export default function Speed() {
   }, [closed, phase])
 
   const mod = sc ? getModuleById(sc.moduleId) : null
-  const mStat = sc ? stats[sc.moduleId] || {} : {}
+  /* `stats[mod] || {}` allocated a NEW object literal on every render whenever the
+     module had no entry, so `units` below re-computed 10x a second while the
+     clock ticked. One shared frozen empty object fixes the identity. */
+  const mStat = (sc && stats[sc.moduleId]) || EMPTY_STAT
   const units = useMemo(() => moduleUnits(mod, mStat), [mod, mStat])
   const isWin = closed === 'answered' && picked === sc?.correct
   const playState = closed === 'answered' ? 'answered' : closed ? 'ended' : 'idle'

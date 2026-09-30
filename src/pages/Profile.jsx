@@ -17,7 +17,6 @@ import {
   X,
   Flame,
   ArrowRight,
-  HardDrive,
   RotateCcw,
   LogOut,
   Target,

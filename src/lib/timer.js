@@ -18,10 +18,10 @@ export function clockSweep(secondsLeft, total) {
 
 /**
  * SVG arc path for a ring segment, starting at 12 o'clock and sweeping clockwise.
- * `r` is the ring radius; `sw` the stroke width, so the stroke stays inside the
- * viewBox at any size.
+ * `r` is the ring radius, already inset by half the stroke width (see
+ * `ringGeometry`) so the stroke stays inside the viewBox at any size.
  */
-export function ringArc({ r, sw, sweepDeg }) {
+export function ringArc({ r, sweepDeg }) {
   const sweep = Math.max(0, Math.min(359.999, sweepDeg))
   // A full circle cannot be drawn as one arc — split it just short of 360 and let
   // the round caps close the gap, so `sweep = 360` still renders.

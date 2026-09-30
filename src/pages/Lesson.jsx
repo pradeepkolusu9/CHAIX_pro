@@ -210,7 +210,7 @@ function Lessons({ mod, stats }) {
 }
 
 /* ============================================================== scenarios */
-function Scenarios({ mod, stats, i, jump, picked, setPicked, xpHere, setXpHere, onBanked, revealRef }) {
+function Scenarios({ mod, stats, i, jump, picked, setPicked, xpHere, setXpHere, onBanked, revealRef, rewardRef }) {
   const { actions } = useActions()
   const reduce = useReducedMotionPref()
   const [busy, setBusy] = useState(false)
@@ -271,7 +271,7 @@ function Scenarios({ mod, stats, i, jump, picked, setPicked, xpHere, setXpHere, 
       rewardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }),
     )
     return () => cancelAnimationFrame(id)
-  }, [revealed, reduce])
+  }, [revealed, reduce, rewardRef])
 
   return (
     <>
@@ -878,7 +878,6 @@ export default function Lesson() {
   const [xpHere, setXpHere] = useState(0)
   const rewardRef = useRef(null)
   const revealRef = useRef(null)
-  const say = useAnnounce()
 
   /** The one way to leave a scenario — from a pip or from "Next scenario". */
   const jump = (k) => {
@@ -978,6 +977,7 @@ export default function Lesson() {
                   setXpHere={setXpHere}
                   onBanked={(n) => setBanked((v) => v + n)}
                   revealRef={revealRef}
+                  rewardRef={rewardRef}
                 />
               )}
               {tab === 'quiz' && <Quiz mod={mod} stats={s} />}

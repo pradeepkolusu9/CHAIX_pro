@@ -5,7 +5,6 @@ import { Sidebar } from './Sidebar.jsx'
 import { TopBar } from './TopBar.jsx'
 import { MobileNav, MobileMenu } from './MobileNav.jsx'
 import { EffectsHost, ToastHost } from '../fx/Rewards.jsx'
-import { DisclaimerNote } from '../ui/index.jsx'
 
 /**
  * Ambient background. Three fixed composited layers, zero scroll repaint:

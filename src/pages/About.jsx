@@ -328,7 +328,7 @@ export default function About() {
         </Card>
 
         <ul className="mt-3 divide-y divide-white/[0.05]">
-          {NUMBERS.map((r, i) => {
+          {NUMBERS.map((r) => {
             const primary = r.number === '112'
             return (
               <motion.li key={r.id} {...inView} className="flex items-start gap-4 py-3.5">

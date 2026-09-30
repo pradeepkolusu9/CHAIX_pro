@@ -73,9 +73,13 @@ function ModuleCard({ row, prevName, focused, innerRef }) {
 
       {/* locked reason / progress */}
       {locked ? (
-        <p className="mt-4 flex items-center gap-2">
-          <Lock size={13} strokeWidth={2.2} className="shrink-0 text-fg-faint" />
-          <span className="caption min-w-0 truncate">
+        /* `items-start`, not `items-center`: this is a SENTENCE, not a label, so it
+           wraps to two lines. `truncate` here both cut it mid-word AND, because the
+           flex ancestor had no `min-w-0`, pushed the whole page to 508px at a 360px
+           viewport — 148px of horizontal overflow on the module library. */
+        <p className="mt-4 flex items-start gap-2">
+          <Lock size={13} strokeWidth={2.2} className="mt-[3px] shrink-0 text-fg-faint" />
+          <span className="caption min-w-0">
             Complete the previous module to unlock
             {prevName ? ` · finish ${prevName}` : ''}
             {s.pct > 0 ? ` · ${s.pct}% done` : ''}
