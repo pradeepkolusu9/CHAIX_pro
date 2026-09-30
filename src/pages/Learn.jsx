@@ -208,7 +208,8 @@ export default function Learn() {
   const [difficulty, setDifficulty] = useState('all')
   const [status, setStatus] = useState('all')
 
-  const focusId = MODULES.some((m) => m.id === params.get('focus')) ? params.get('focus') : null
+  const focusParam = MODULES.some((m) => m.id === params.get('focus')) ? params.get('focus') : null
+  const [focusId, setFocusId] = useState(focusParam)
 
   const totals = useMemo(
     () =>
@@ -253,15 +254,20 @@ export default function Learn() {
     [stats, unlocked],
   )
 
-  /* deep link from search: bring the target card into view */
+  /* deep link from search: bring the target card into view, ring it for ~2s */
   useEffect(() => {
-    if (!focusId) return undefined
+    setFocusId(focusParam)
+    if (!focusParam) return undefined
     const id = setTimeout(() => {
-      const el = cards.current[focusId]
+      const el = cards.current[focusParam]
       if (el) el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
     }, 160)
-    return () => clearTimeout(id)
-  }, [focusId, reduce])
+    const clear = setTimeout(() => setFocusId(null), 2200)
+    return () => {
+      clearTimeout(id)
+      clearTimeout(clear)
+    }
+  }, [focusParam, reduce])
 
   const term = q.trim().toLowerCase()
   const filtered = useMemo(
@@ -352,7 +358,7 @@ export default function Learn() {
             </div>
             <div className="flex items-center gap-2">
               <span className="chip shrink-0 tabular-nums">
-                {filtered.length} of {MODULES.length} modules
+                {showFeatured ? `${gridRows.length} more modules` : `${filtered.length} of ${MODULES.length} modules`}
               </span>
               {dirty && (
                 <Button variant="quiet" size="sm" icon={X} onClick={clear} className="shrink-0">

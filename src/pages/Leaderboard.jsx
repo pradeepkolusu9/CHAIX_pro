@@ -14,8 +14,8 @@ import {
   formatNumber,
   resolveHues,
 } from '../components/ui/index.jsx'
-import { useStore } from '../lib/store.jsx'
-import { buildBoard, TABS } from '../data/leaderboard.js'
+import { useStore, LEDGER_MAX } from '../lib/store.jsx'
+import { buildBoard, weeklyXp, TABS } from '../data/leaderboard.js'
 import { XP_RULES, levelNumber } from '../lib/gamification.js'
 import { useReducedMotionPref } from '../lib/hooks.js'
 
@@ -111,7 +111,7 @@ function Segmented({ tabs, value, onChange }) {
             role="tab"
             aria-selected={on}
             onClick={() => onChange(t.key)}
-            className={`min-h-[44px] flex-1 whitespace-nowrap rounded-xl px-4 font-sans text-body font-semibold transition-all duration-200 sm:flex-none sm:px-6 ${
+            className={`min-h-[44px] flex-1 whitespace-nowrap rounded-xl px-2 font-sans text-body font-semibold transition-all duration-200 sm:flex-none sm:px-6 ${
               on ? 'bg-pure text-electric-300 shadow-sheet' : 'text-fg-dim hover:text-fg'
             }`}
           >
@@ -125,13 +125,16 @@ function Segmented({ tabs, value, onChange }) {
 
 /* --------------------------------------------------------------------- page */
 export default function Leaderboard() {
-  const { profile, level } = useStore()
+  const { profile, level, ledger } = useStore()
   const [tab, setTab] = useState('weekly')
   const reduce = useReducedMotionPref()
 
+  // Weekly and college boards use this week's XP; only All India uses lifetime XP.
+  const weekly = useMemo(() => weeklyXp(ledger), [ledger])
+  const myXp = tab === 'global' ? level.xp : weekly.xp
   const board = useMemo(
-    () => buildBoard(tab, { xp: level.xp, college: profile?.college, name: profile?.name }),
-    [tab, level.xp, profile?.college, profile?.name],
+    () => buildBoard(tab, { xp: myXp, college: profile?.college, name: profile?.name }),
+    [tab, myXp, profile?.college, profile?.name],
   )
 
   /* De-collide the avatar hues once, in render order. `board.top` is a prefix of
@@ -156,10 +159,18 @@ export default function Leaderboard() {
 
   const deltaPrimary = above
     ? `${formatNumber(gap)} XP behind ${above.name}`
-    : `Nobody above you ${scope} — you are ranked 1st`
-  const deltaSecondary = aheadCount
-    ? `You are ahead of ${formatNumber(belowCount)} ${learners} ${scope} · ${formatNumber(aheadCount)} to catch.`
-    : `Nobody above you ${scope} — you are ranked 1st.`
+    : belowCount
+      ? `You are ranked 1st ${scope}`
+      : `You are the only learner ${scope} so far`
+  const deltaSecondary = above
+    ? belowCount
+      ? `You are ahead of ${formatNumber(belowCount)} ${learners} ${scope} · ${formatNumber(aheadCount)} to catch.`
+      : `${formatNumber(aheadCount)} ${aheadCount === 1 ? 'learner' : 'learners'} to catch ${scope}.`
+    : belowCount
+      ? `You are ahead of ${formatNumber(belowCount)} ${learners} ${scope}.`
+      : 'Complete something to get on the board.'
+  // Pinned row only when the list's own row is far away, not when you are last and already visible.
+  const pinned = you && you.rank > 10 && you.rank < board.total
 
   return (
     <motion.div
@@ -172,7 +183,10 @@ export default function Leaderboard() {
         <div>
           <div className="eyebrow mb-2">Leaderboard</div>
           <h1 className="t1">Who is on top</h1>
-          <p className="copy mt-1">{tabHint} · {board.total} learners on this board</p>
+          <p className="copy mt-1">
+            {tabHint} · {board.total} learners on this board
+            {tab === 'college' && ' · Sample learners from your college'}
+          </p>
         </div>
         <Segmented tabs={TABS} value={tab} onChange={setTab} />
       </div>
@@ -187,7 +201,8 @@ export default function Leaderboard() {
             hidden: {},
             show: { transition: { staggerChildren: reduce ? 0 : 0.08, delayChildren: 0.04 } },
           }}
-          className="mx-auto grid max-w-[640px] grid-cols-3 items-end gap-2 sm:gap-4"
+          style={{ gridTemplateColumns: `repeat(${top.length}, minmax(0, 1fr))` }}
+          className="mx-auto grid max-w-[640px] items-end gap-2 sm:gap-4"
         >
           {top.map((row) => (
             <PodiumStep key={row.id} row={row} reduce={reduce} />
@@ -253,7 +268,7 @@ export default function Leaderboard() {
         <SectionHeading
           eyebrow="Full ranking"
           title="Every learner"
-          sub={you && you.rank > 10 ? 'Your row is pinned at the bottom so you can always find it.' : undefined}
+          sub={pinned ? 'Your row is pinned at the bottom so you can always find it.' : undefined}
         />
         <motion.div
           variants={{ hidden: {}, show: { transition: { staggerChildren: reduce ? 0 : 0.04 } } }}
@@ -267,7 +282,7 @@ export default function Leaderboard() {
           ))}
         </motion.div>
 
-        {you && you.rank > 10 && (
+        {pinned && (
           <div className="sticky bottom-[76px] z-10 mt-3 sm:bottom-3">
             <div className="sheet overflow-hidden rounded-2xl p-1">
               <LeaderboardRow row={you} standalone reduce={reduce} />
@@ -279,7 +294,9 @@ export default function Leaderboard() {
           <Info size={16} className="mt-1 shrink-0 text-fg-dim" strokeWidth={2.2} />
           <span>
             The other learners here are sample data, not real people. Your row is your real progress on this
-            device. <span className="font-semibold text-fg-muted">My College</span> filters to your institution.
+            device. <span className="font-semibold text-fg-muted">This Week</span> counts XP since Monday
+            (from your latest {LEDGER_MAX} XP entries{weekly.truncated ? ', so a very busy week may read low' : ''}).
+            <span className="font-semibold text-fg-muted"> My College</span> shows only sample learners from your institution.
           </span>
         </p>
       </section>

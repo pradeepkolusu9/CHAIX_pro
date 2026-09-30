@@ -5,8 +5,10 @@
  * published helpline. If a number cannot be verified against an official
  * source it does not belong in this file.
  *
- * Last reviewed: 30 September 2026. Helplines do change — verify before an
- * actual emergency and prefer the official website where listed.
+ * Drafted 30 September 2026 and NOT yet checked by a lawyer or against every
+ * official source. Helplines do change — verify before an actual emergency and
+ * prefer the official website where listed. Emergency numbers: police 100, fire 101,
+ * ambulance 108, all-in-one 112.
  */
 
 export const VERIFIED_ON = '2026-09-30'
@@ -79,29 +81,29 @@ export const RESOURCES = [
   {
     id: 'r-101',
     category: 'emergency',
-    name: 'Ambulance',
+    name: 'Fire Service',
     number: '101',
-    about: 'Emergency medical transport in most cities.',
-    source: 'State health services',
+    about: 'Fire and rescue service. Call 101 for a fire. If you are unsure which service you need, call 112.',
+    source: 'State fire and emergency services',
     sourceUrl: 'https://www.mha.gov.in',
   },
   {
     id: 'r-108',
     category: 'emergency',
-    name: 'Emergency Medical Response',
+    name: 'Ambulance — Emergency Medical Response',
     number: '108',
-    about: 'Free emergency medical response. Availability and coverage vary by state — 112 is the safer single number.',
+    about: 'Emergency ambulance and medical response, free in many states. Availability and coverage vary by state — 112 is the safer single number.',
     source: 'State run emergency medical services',
     sourceUrl: 'https://nhm.gov.in',
   },
   {
     id: 'r-1033',
     category: 'emergency',
-    name: 'Highway Patrol Helpline',
+    name: 'Highway Helpline',
     number: '1033',
-    about: 'All India toll-free helpline of the Ministry of Road Transport and Highways for assistance on national highways.',
-    source: 'Ministry of Road Transport and Highways',
-    sourceUrl: 'https://morth.nic.in',
+    about: 'Toll-free helpline of the National Highways Authority of India (NHAI) for assistance and accident help on national highways.',
+    source: 'National Highways Authority of India',
+    sourceUrl: 'https://nhai.gov.in',
   },
 
   // ------------------------------------------------------------- women
@@ -110,18 +112,18 @@ export const RESOURCES = [
     category: 'women',
     name: 'Women Helpline',
     number: '181',
-    about: 'State-run helpline for women in distress, run with women operators. Supports police, medical and legal help.',
-    source: 'State Women Helpline',
+    about: 'Women Helpline of the Ministry of Women and Child Development, for women in distress. Supports police, medical and legal help.',
+    source: 'Ministry of Women and Child Development',
     sourceUrl: 'https://wcd.gov.in',
   },
   {
     id: 'r-1091',
     category: 'women',
-    name: 'Women Power Line',
+    name: 'Women Helpline (Police)',
     number: '1091',
-    about: 'Dedicated helpline for women, operated by the Ministry of Women and Child Development with the Ministry of Education.',
-    source: 'Ministry of Women and Child Development',
-    sourceUrl: 'https://wcd.gov.in',
+    about: 'Helpline for women in distress, run with the police. The Ministry of Women and Child Development runs a separate Women Helpline on 181.',
+    source: 'State police, Ministry of Home Affairs',
+    sourceUrl: 'https://www.mha.gov.in',
   },
   {
     id: 'r-domestic',
@@ -131,7 +133,7 @@ export const RESOURCES = [
     about:
       'Under the Domestic Violence Act, 2005 a woman facing violence can approach a Magistrate for a protection order, a residence order, monetary relief and custody of children. This is a civil remedy — you do not have to wait for a criminal case.',
     source: 'National Commission for Women / District Magistrate',
-    sourceUrl: 'http://ncw.nic.in',
+    sourceUrl: 'https://ncw.gov.in',
   },
 
   // ------------------------------------------------------------- child
@@ -194,7 +196,7 @@ export const RESOURCES = [
     number: '1930',
     about:
       '24x7 national helpline and online portal for reporting cyber crime and financial fraud. You get a complaint number — keep it, it is what speeds up the process.',
-    source: 'Ministry of Electronics and Information Technology, Government of India',
+    source: 'Indian Cyber Crime Coordination Centre (I4C), Ministry of Home Affairs',
     sourceUrl: 'https://cybercrime.gov.in',
   },
   {
@@ -262,7 +264,7 @@ export const RESOURCES = [
     number: null,
     about:
       'The Right to Information Act, 2005 lets any citizen request information from a public authority. A request can be filed with the Public Information Officer of that office.',
-    source: 'Ministry of Information & Broadcasting / RTI Online',
+    source: 'Department of Personnel and Training / RTI Online',
     sourceUrl: 'https://rtionline.gov.in',
   },
 
@@ -277,13 +279,13 @@ export const RESOURCES = [
     sourceUrl: 'https://www.indiacode.nic.in',
   },
   {
-    id: 'r-nios',
+    id: 'r-antiragging',
     category: 'learn',
-    name: 'National Institute of Open Schooling',
+    name: 'UGC Anti-Ragging Portal',
     number: null,
-    about: 'Open and distance learning, and awareness material including anti-ragging guidance.',
-    source: 'NIOS, Ministry of Education',
-    sourceUrl: 'https://nios.ac.in',
+    about: 'Official University Grants Commission portal on ragging: the regulations, how to complain, and the anti-ragging helpline details. Read alongside your state anti-ragging law.',
+    source: 'University Grants Commission',
+    sourceUrl: 'https://www.antiragging.in',
   },
   {
     id: 'r-cert-in',
@@ -311,7 +313,7 @@ export const RESOURCES = [
     number: null,
     about: 'Complaints and support for women, including violations of the Domestic Violence Act, 2005.',
     source: 'National Commission for Women',
-    sourceUrl: 'http://ncw.nic.in',
+    sourceUrl: 'https://ncw.gov.in',
   },
 ]
 

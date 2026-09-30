@@ -71,25 +71,35 @@ function Marked({ text, tokens }) {
     )
 }
 
+const STOP = new Set(
+  'the and for you your are was were not but can how why what when who whom does did has had have its this that with from into about just any all out our their them they she him her his'.split(' '),
+)
+
+/** Word-start match, so "car" no longer hits "scarce" and "my" no longer hits "mystery". */
+const wordHit = (hay, needle) => new RegExp(`\\b${esc(needle)}`, 'i').test(hay)
+
+/** Query words worth scoring: longer than two characters and not a stop-word. */
+const tokenize = (term) => term.toLowerCase().split(/\s+/).filter((t) => t.length > 2 && !STOP.has(t))
+
 /**
- * Relevance: the exact phrase wins, then every word matching, then any single
- * word. That keeps a chip like "salary not paid" useful even though the corpus
- * only says "salary".
+ * Relevance: the exact phrase wins, then every word matching, then at least half of
+ * the words. That keeps a chip like "salary not paid" useful even though the corpus
+ * only says "salary", without "my refund never came" matching the whole index.
  */
 function score(row, term, tokens) {
   const title = row.title.toLowerCase()
   const mod = row.module.toLowerCase()
   const text = row.text.toLowerCase()
-  const hay = `${title} ${mod} ${text}`
   let s = 0
   if (title.startsWith(term)) s += 100
-  else if (title.includes(term)) s += 70
-  if (mod.includes(term)) s += 55
-  if (text.includes(term)) s += 35
-  if (tokens.length > 1) {
-    const hits = tokens.filter((t) => hay.includes(t)).length
-    if (hits === tokens.length) s += 30
-    else if (hits) s += hits * 5
+  else if (wordHit(title, term)) s += 70
+  if (wordHit(mod, term)) s += 55
+  if (wordHit(text, term)) s += 35
+  if (tokens.length) {
+    const hay = `${title} ${mod} ${text}`
+    const hits = tokens.filter((t) => wordHit(hay, t)).length
+    if (hits === tokens.length) s += 30 + hits * 5
+    else if (hits >= Math.ceil(tokens.length / 2)) s += hits * 5
   }
   return s
 }
@@ -146,8 +156,9 @@ export default function SearchPage() {
   const desktop = useMediaQuery('(min-width: 1024px)')
 
   // Keep the field in step when the URL changes (back button, /search?q=… link).
+  // (compare trimmed, or the trailing space the user is typing gets rewritten away)
   useEffect(() => {
-    setTerm(urlQ)
+    setTerm((t) => (t.trim() === urlQ ? t : urlQ))
   }, [urlQ])
 
   // The "/" hint has to do something.
@@ -164,10 +175,7 @@ export default function SearchPage() {
     return () => document.removeEventListener('keydown', onKey)
   }, [])
 
-  const tokens = useMemo(
-    () => term.toLowerCase().split(/\s+/).filter((t) => t.length > 1),
-    [term],
-  )
+  const tokens = useMemo(() => tokenize(term), [term])
   const needle = term.trim().toLowerCase()
 
   const results = useMemo(() => {
@@ -356,8 +364,8 @@ export default function SearchPage() {
       <div className="space-y-3 border-t border-white/[0.05] pt-6">
         <h3 className="t3">About these results</h3>
         <p className="copy measure">
-          Everything above comes from LawLink’s own verified content — eight topics, their scenarios
-          and quiz questions, each checked against an official source. It is not a live search of the
+          Everything above comes from LawLink’s own drafted content — eight topics, their scenarios
+          and quiz questions, each linked to an official source. It is not a live search of the
           internet, so if something is urgent or time-bound, go straight to{' '}
           <Link to="/emergency" className="font-semibold text-danger hover:underline">
             Emergency help

@@ -3,6 +3,7 @@
  * `xp` values are seeds; the current user's real XP is injected at render time
  * and sorted in, so the row always reflects actual play.
  */
+import { LEDGER_MAX } from '../lib/store.jsx'
 
 export const COLLEGES = [
   'VIT Chennai',
@@ -49,20 +50,41 @@ export const TABS = [
   { key: 'global', label: 'All India', hint: 'Everyone on LawLink' },
 ]
 
-/** Sort a board and return top rows plus the real rank of the current user. */
-export function buildBoard(tab, { xp = 0, college = 'VIT Chennai', name = 'You' } = {}) {
-  const valueFor = (p) => (tab === 'global' ? p.global : p.weekly)
-  const you = { ...YOU, name: name || 'You', college: college || YOU.college, xp }
+/** Monday 00:00 local, the start of the current week. */
+function weekStart(now = new Date()) {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+  return d
+}
 
-  let pool = tab === 'college' ? people.filter((p) => p.college === college) : people
-  if (tab === 'college' && pool.length < 3) {
-    pool = [...pool, ...people.filter((p) => p.college !== college).slice(0, 3 - pool.length)]
-  }
+/**
+ * The user's XP earned since Monday, summed from the ledger. The ledger is capped
+ * (LEDGER_MAX newest entries), so a very busy week can be undercounted: `truncated`
+ * is true when the oldest kept entry is still inside this week.
+ */
+export function weeklyXp(ledger = []) {
+  const start = weekStart().getTime()
+  const xp = ledger.reduce((a, e) => (new Date(e.at).getTime() >= start ? a + (e.amount || 0) : a), 0)
+  const oldest = ledger.length ? new Date(ledger[ledger.length - 1].at).getTime() : Infinity
+  return { xp, truncated: ledger.length >= LEDGER_MAX && oldest >= start }
+}
+
+/**
+ * Sort a board and return the rows plus the real rank of the current user.
+ * `xp` must already be the right number for the tab (weekly for weekly/college,
+ * lifetime for global). The college board holds real matches only, never padding.
+ */
+export function buildBoard(tab, { xp = 0, college = '', name = 'You' } = {}) {
+  const valueFor = (p) => (tab === 'global' ? p.global : p.weekly)
+  const c = (college || YOU.college).trim()
+  const you = { ...YOU, name: name || 'You', college: c }
+
+  const pool = tab === 'college' ? people.filter((p) => p.college.toLowerCase() === c.toLowerCase()) : people
 
   const rows = [
-    ...pool.map((p) => ({ ...p, xp: valueFor(p), isYou: false })),
-    { ...you, xp, isYou: true },
-  ].sort((a, b) => b.xp - a.xp)
+    ...pool.map((p) => ({ ...p, userId: p.id, xp: valueFor(p), isYou: false })),
+    { ...you, userId: you.id, xp, isYou: true },
+  ].sort((a, b) => b.xp - a.xp || Number(b.isYou) - Number(a.isYou)) // ties: you rank above seeds
 
   rows.forEach((r, i) => {
     r.rank = i + 1
@@ -75,12 +97,3 @@ export function buildBoard(tab, { xp = 0, college = 'VIT Chennai', name = 'You' 
     total: rows.length,
   }
 }
-
-export const podiumClass = (rank) =>
-  rank === 1
-    ? 'from-xp-300 to-xp-500 text-ink-900'
-    : rank === 2
-      ? 'from-slate-200 to-slate-400 text-ink-900'
-      : rank === 3
-        ? 'from-amber-700 to-amber-500 text-white'
-        : ''

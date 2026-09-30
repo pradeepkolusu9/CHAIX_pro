@@ -15,11 +15,13 @@ export function useCountUp(target, { duration = 700, enabled = true } = {}) {
   const targetNum = Number(target) || 0
   const [value, setValue] = useState(targetNum)
   const fromRef = useRef(targetNum)
+  const shownRef = useRef(targetNum) // value last handed to setValue
   const rafRef = useRef(null)
 
   useEffect(() => {
     if (!enabled) {
       fromRef.current = targetNum
+      shownRef.current = targetNum
       setValue(targetNum)
       return undefined
     }
@@ -32,6 +34,7 @@ export function useCountUp(target, { duration = 700, enabled = true } = {}) {
       window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches
     if (reduce) {
       fromRef.current = targetNum
+      shownRef.current = targetNum
       setValue(targetNum)
       return undefined
     }
@@ -40,16 +43,17 @@ export function useCountUp(target, { duration = 700, enabled = true } = {}) {
     const tick = (now) => {
       const t = Math.min(1, (now - start) / duration)
       const eased = t === 1 ? 1 : 1 - Math.pow(2, -10 * t) // easeOutExpo
-      setValue(Math.round(from + delta * eased))
+      shownRef.current = Math.round(from + delta * eased)
+      setValue(shownRef.current)
       if (t < 1) rafRef.current = requestAnimationFrame(tick)
       else fromRef.current = targetNum
     }
     rafRef.current = requestAnimationFrame(tick)
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
-      fromRef.current = value
+      // Resume from what was actually painted last, not the stale render closure.
+      fromRef.current = shownRef.current
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetNum, duration, enabled])
 
   return value
@@ -118,6 +122,8 @@ export function useInViewOnce(threshold = 0.25) {
 /** Confetti burst — a self-contained canvas-free particle field. */
 export function useBurst(duration = 2600) {
   const [parts, setParts] = useState([])
+  const timer = useRef(null)
+  useEffect(() => () => clearTimeout(timer.current), [])
   const fire = useCallback(
     (count = 34) => {
       if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) return
@@ -136,7 +142,8 @@ export function useBurst(duration = 2600) {
         }
       })
       setParts(next)
-      setTimeout(() => setParts([]), duration)
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => setParts([]), duration)
     },
     [duration],
   )

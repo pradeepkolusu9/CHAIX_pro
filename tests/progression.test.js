@@ -17,6 +17,7 @@ import {
 } from '../src/lib/progression.js'
 import { levelForXp, LEVELS, TOTAL_MODULES, BADGES } from '../src/lib/gamification.js'
 import { dayKeyList } from '../src/lib/dates.js'
+import { demoState, allModuleStats } from '../src/lib/store.jsx'
 
 const back = (n) => {
   const d = new Date()
@@ -89,6 +90,14 @@ describe('recomputeStreak', () => {
   })
   it('keeps it alive on the same day', () => {
     expect(recomputeStreak({ current: 4, longest: 4, lastActive: today() }).current).toBe(4)
+  })
+  it('returns the same object when nothing changes', () => {
+    const live = { current: 4, longest: 4, lastActive: back(1) }
+    expect(recomputeStreak(live)).toBe(live)
+    const dead = { current: 0, longest: 4, lastActive: back(9), activity: {} }
+    expect(recomputeStreak(dead)).toBe(dead)
+    const fresh = { current: 0, longest: 0, lastActive: null, activity: {} }
+    expect(recomputeStreak(fresh)).toBe(fresh)
   })
   it('zeroes it after two days of silence but keeps the record', () => {
     const r = recomputeStreak({ current: 4, longest: 11, lastActive: back(3) })
@@ -174,13 +183,18 @@ describe('level thresholds are strictly increasing', () => {
   })
 })
 
-describe('unlocksForLevel no longer contradicts the journey', () => {
-  it('never claims a module opens at a level', () => {
-    for (let lvl = 1; lvl <= LEVELS.length; lvl += 1) {
-      for (const line of unlocksForLevel(lvl, { nextModuleName: 'Road Laws' })) {
-        expect(line).not.toMatch(/module opens/i)
-      }
+describe('unlocksForLevel only makes true claims', () => {
+  it('states the level title for every level and nothing gated by level', () => {
+    for (const l of LEVELS) {
+      const lines = unlocksForLevel(l.level, { nextModuleName: 'Road Laws' })
+      expect(lines[0]).toBe(`You are now a ${l.name}`)
+      for (const line of lines) expect(line).not.toMatch(/module opens|badge|unlocked|track/i)
+      expect(lines).toContain('Road Laws is your next mission')
     }
+  })
+  it('only the last level claims to be the highest', () => {
+    expect(unlocksForLevel(LEVELS.length)).toContain('You have reached the highest level')
+    expect(unlocksForLevel(1)).toHaveLength(1)
   })
 })
 
@@ -198,5 +212,48 @@ describe('badge predicates', () => {
 
   it('every badge has a sigil id', () => {
     for (const b of BADGES) expect(typeof b.sigil).toBe('string')
+  })
+})
+
+describe('demoState is internally consistent', () => {
+  const d = demoState().progress
+  const stats = allModuleStats(d)
+
+  it('matches the advertised level 4 / 1,850 XP / 6-day streak', () => {
+    expect(d.xp).toBe(1850)
+    expect(levelForXp(d.xp).level).toBe(4)
+    expect(d.streak.current).toBe(6)
+  })
+
+  it('completed modules really passed their quiz (>= 80%)', () => {
+    const c = stats.cybercrime
+    expect(c.completed).toBe(true)
+    expect(c.quizBest / c.quizTotal).toBeGreaterThanOrEqual(0.8)
+  })
+
+  it('an unpassed quiz is not completed and never reads 100%', () => {
+    const c = stats.consumer
+    expect(c.quizDone).toBe(true)
+    expect(c.quizBest).toBe(6)
+    expect(c.completed).toBe(false)
+    expect(c.pct).toBeLessThan(100)
+  })
+
+  it('history, totals and ledger agree with the module records', () => {
+    for (const q of d.quizHistory) expect(q.total).toBe(stats[q.moduleId].quizTotal)
+    expect(d.quizTotals.answered).toBe(d.quizHistory.reduce((a, q) => a + q.total, 0))
+    expect(d.quizTotals.correct).toBe(d.quizHistory.reduce((a, q) => a + q.score, 0))
+    expect(d.ledger.find((l) => l.id === 'l1').amount).toBe(6 * 25)
+  })
+
+  it('has enough activity days to back longest = 9', () => {
+    const days = new Set(Object.keys(d.streak.activity))
+    let best = 0
+    let run = 0
+    for (let i = 0; i < 40; i += 1) {
+      run = days.has(back(i)) ? run + 1 : 0
+      best = Math.max(best, run)
+    }
+    expect(best).toBeGreaterThanOrEqual(d.streak.longest)
   })
 })

@@ -10,12 +10,14 @@
  *   - Separation is tonal. Do not add `border border-white/...` to a surface.
  *   - One btn-primary per screen.
  */
-import { forwardRef } from 'react'
+import { forwardRef, useId, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ShieldCheck, CalendarClock, X, BookOpen, Link2, Scale, Info, FileClock } from 'lucide-react'
 import { useCountUp } from '../../lib/hooks.js'
+import { LAST_VERIFIED_LABEL } from '../../lib/review.js'
 import { formatNumber } from '../../lib/dates.js'
 import { Button } from './Button.jsx'
+import { useDialog } from './useDialog.js'
 import { Sigil, sigilGlyph, MODULE_SIGILS, SIGIL_IDS, hasSigil } from './Sigil.jsx'
 import { Monogram, initialsOf, hueFor, resolveHues } from './Monogram.jsx'
 
@@ -99,7 +101,14 @@ export function ProgressBar({
           {showLabel && <span className="eyebrow tnum">{Math.round(pct)}%</span>}
         </div>
       )}
-      <div className={`track ${h}`}>
+      <div
+        className={`track ${h}`}
+        role="progressbar"
+        aria-label={label || 'Progress'}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct)}
+      >
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
@@ -213,10 +222,11 @@ export function Pill({ icon: Icon, children, tone = 'default', className = '' })
 
 /* ------------------------------------------------------------------ Modal */
 export const Modal = forwardRef(function Modal(
-  { open, onClose, children, size = 'md', dismissible = true, className = '' },
+  { open, onClose, children, size = 'md', dismissible = true, className = '', label, labelledBy },
   _ref,
 ) {
   const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' }
+  const panel = useDialog({ open, onClose, dismissible })
   return (
     <AnimatePresence>
       {open && (
@@ -226,16 +236,20 @@ export const Modal = forwardRef(function Modal(
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
           className="fixed inset-0 z-[90] flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
         >
           <div className="absolute inset-0 bg-ink-950/45 backdrop-blur-sm" onClick={dismissible ? onClose : undefined} />
           <motion.div
+            ref={panel}
+            role="dialog"
+            aria-modal="true"
+            aria-label={label}
+            aria-labelledby={labelledBy}
+            tabIndex={-1}
             initial={{ opacity: 0, y: 18, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className={`overlay-panel relative z-10 w-full overflow-hidden rounded-2xl ${sizes[size]} ${className}`}
+            className={`overlay-panel relative z-10 w-full overflow-hidden rounded-2xl outline-none ${sizes[size]} ${className}`}
           >
             {dismissible && (
               <button
@@ -254,18 +268,67 @@ export const Modal = forwardRef(function Modal(
   )
 })
 
+/** Yes/no confirmation for destructive actions. */
+export function ConfirmModal({ open, onClose, onConfirm, title, body, confirmLabel = 'Confirm', danger = true }) {
+  const id = useId()
+  return (
+    <Modal open={open} onClose={onClose} size="sm" labelledBy={id}>
+      <div className="p-6 pr-12">
+        <h2 id={id} className="t2">
+          {title}
+        </h2>
+        <p className="copy mt-2">{body}</p>
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button variant="ghost" onClick={onClose} data-autofocus>
+            Cancel
+          </Button>
+          <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 /* ------------------------------------------------------------------- Tabs */
-export function Tabs({ tabs, value, onChange, className = '' }) {
+/** Pass `idPrefix` to wire ids: tabs `${p}-tab-${key}`, panels should be `${p}-panel-${key}`. */
+export function Tabs({ tabs, value, onChange, className = '', idPrefix, label }) {
+  const list = useRef(null)
+  const onKeyDown = (e) => {
+    const i = tabs.findIndex((t) => t.key === value)
+    const next =
+      e.key === 'ArrowRight' ? (i + 1) % tabs.length
+      : e.key === 'ArrowLeft' ? (i - 1 + tabs.length) % tabs.length
+      : e.key === 'Home' ? 0
+      : e.key === 'End' ? tabs.length - 1
+      : -1
+    if (next < 0) return
+    e.preventDefault()
+    onChange(tabs[next].key)
+    requestAnimationFrame(() => list.current?.querySelectorAll('[role="tab"]')[next]?.focus())
+  }
   return (
     /* `min-w-0` is required: this is an `overflow-x-auto` flex child, and a flex
        item's default `min-width:auto` refuses to shrink below its content, which
        pushed the whole page to ~470px at 360 and cut off the scenario card. */
-    <div className={`no-scrollbar -mx-1 flex min-w-0 gap-1 overflow-x-auto px-1 ${className}`}>
+    <div
+      ref={list}
+      role="tablist"
+      aria-label={label}
+      onKeyDown={onKeyDown}
+      className={`no-scrollbar -mx-1 flex min-w-0 gap-1 overflow-x-auto px-1 ${className}`}
+    >
       {tabs.map((t) => {
         const active = t.key === value
         return (
           <button
             key={t.key}
+            role="tab"
+            id={idPrefix ? `${idPrefix}-tab-${t.key}` : undefined}
+            aria-selected={active}
+            aria-controls={idPrefix ? `${idPrefix}-panel-${t.key}` : undefined}
+            tabIndex={active ? 0 : -1}
             onClick={() => onChange(t.key)}
             className={`relative shrink-0 whitespace-nowrap rounded-xl px-3.5 py-2 font-sans text-body font-semibold transition-colors duration-200 ${
               active ? 'text-electric-300' : 'text-fg-dim hover:bg-white/[0.05] hover:text-fg'
@@ -300,7 +363,7 @@ export function LegalBasis({ basis, source, lastVerified, className = '' }) {
     },
     basis.note && { icon: BookOpen, label: 'In plain words', value: basis.note, serif: true },
     source && { icon: Link2, label: 'Official source', value: source, href: basis.link },
-    lastVerified && { icon: CalendarClock, label: 'Last verified', value: lastVerified },
+    lastVerified && { icon: CalendarClock, label: LAST_VERIFIED_LABEL, value: lastVerified },
   ].filter(Boolean)
 
   return (

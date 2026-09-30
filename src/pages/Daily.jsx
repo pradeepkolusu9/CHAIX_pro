@@ -6,7 +6,7 @@
  * verdict -> why -> reward. `completeDaily()` is guarded so the daily bonus can
  * only ever fire once per calendar day; the store guards it too.
  */
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -33,6 +33,7 @@ import {
 } from '../components/ui/index.jsx'
 import { useStore, useActions } from '../lib/store.jsx'
 import { useTicker } from '../lib/hooks.js'
+import { useAnnounce } from '../lib/announce.jsx'
 import { todayKey, msUntilMidnight, formatCountdown } from '../lib/dates.js'
 import { XP_RULES, levelNumber } from '../lib/gamification.js'
 import { dailyChallenge, dailyTitle, sixtySecondBank } from '../data/challenges.js'
@@ -124,13 +125,16 @@ function OptionRow({ opt, index, locked, picked, correct, onPick }) {
 }
 
 /* ------------------------------------------------ the shared answer moment */
-function ScenarioPlay({ sc, mode, onSubmit, onNext, onExit }) {
+function ScenarioPlay({ sc, mode, cleared, onSubmit, onNext, onExit }) {
   const mod = getModuleById(sc.moduleId)
   const [picked, setPicked] = useState(null)
   const [state, setState] = useState('idle') // idle -> answered -> done
   const [hint, setHint] = useState(false)
-  const [claimedBonus, setClaimedBonus] = useState(false)
+  // What this answer actually paid: { xp, note }. null until the store has answered.
+  const [result, setResult] = useState(null)
   const sentRef = useRef(false)
+  const verdictRef = useRef(null)
+  const say = useAnnounce()
 
   const locked = state !== 'idle'
   const isRight = picked === sc.correct
@@ -141,16 +145,42 @@ function ScenarioPlay({ sc, mode, onSubmit, onNext, onExit }) {
     const right = optId === sc.correct
     setPicked(optId)
     setState('answered')
-    setClaimedBonus(mode === 'daily')
     setHint(false)
+    let awarded = false
     try {
-      await onSubmit(right)
+      awarded = await onSubmit(right)
     } catch (err) {
       console.warn('[lawlink] daily answer failed', err)
     } finally {
+      // The pills mirror what the store paid, never what the page hoped for.
+      if (mode === 'daily') {
+        setResult(
+          awarded
+            ? { daily: true, xp: XP_RULES.dailyChallenge, note: 'Daily challenge banked.' }
+            : { daily: true, xp: 0, note: right ? 'Already banked today.' : 'No XP for a wrong answer. Try again tomorrow, or practise.' },
+        )
+      } else {
+        setResult(
+          cleared
+            ? { xp: 0, note: 'No XP: you already cleared this scenario.' }
+            : { xp: XP_RULES.scenario, note: '' },
+        )
+      }
       setState('done')
     }
   }
+
+  /* Answering disables the focused button, so focus would fall to <body>:
+     announce the verdict and move focus to it. */
+  useEffect(() => {
+    if (!result) return undefined
+    say(
+      `${isRight ? 'Right call.' : 'Not this time.'} ${result.xp ? `+${result.xp} XP.` : result.note} ${sc.why || ''}`,
+    )
+    const id = requestAnimationFrame(() => verdictRef.current?.focus({ preventScroll: true }))
+    return () => cancelAnimationFrame(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result])
 
   return (
     <Card className="sheet-lg sheet-focal p-5 sm:p-8">
@@ -225,7 +255,9 @@ function ScenarioPlay({ sc, mode, onSubmit, onNext, onExit }) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, ease: EASE }}
-            className="mt-7 border-t border-white/[0.07] pt-6"
+            ref={verdictRef}
+            tabIndex={-1}
+            className="mt-7 border-t border-white/[0.07] pt-6 focus:outline-none"
           >
             <div className="flex items-center gap-2.5">
               <IconBadge icon={isRight ? Check : X} tone={isRight ? 'good' : 'danger'} size="sm" />
@@ -236,16 +268,24 @@ function ScenarioPlay({ sc, mode, onSubmit, onNext, onExit }) {
                 ? 'That is the move the law expects. Scenario cleared.'
                 : 'The lesson still counts. This is the one to remember.'}
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Pill tone="xp">+{XP_RULES.scenario} XP</Pill>
-              {claimedBonus && <Pill tone="good">+{XP_RULES.dailyChallenge} XP daily bonus</Pill>}
-            </div>
+            {result && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {result.xp > 0 ? (
+                  <Pill tone={result.daily ? 'good' : 'xp'}>
+                    +{result.xp} XP{result.daily ? ' daily bonus' : ''}
+                  </Pill>
+                ) : (
+                  <Pill>No XP this time</Pill>
+                )}
+                {result.note && <span className="caption">{result.note}</span>}
+              </div>
+            )}
           </motion.section>
         )}
       </AnimatePresence>
 
       <AnimatePresence>
-        {state === 'answered' && (
+        {locked && (
           <motion.section
             key="why"
             initial={{ opacity: 0, y: 12 }}
@@ -305,7 +345,7 @@ function ScenarioPlay({ sc, mode, onSubmit, onNext, onExit }) {
           >
             {/* the ONE primary button on this screen */}
             <Button variant="primary" size="lg" className="w-full sm:w-auto" onClick={onNext} iconRight={ArrowRight}>
-              Next scenario
+              {mode === 'daily' ? 'Practise another' : 'Next scenario'}
             </Button>
             <Button variant="ghost" size="lg" className="w-full sm:w-auto" onClick={onExit}>
               Back to dashboard
@@ -319,11 +359,11 @@ function ScenarioPlay({ sc, mode, onSubmit, onNext, onExit }) {
 
 /* ------------------------------------------------------------------- page */
 export default function Daily() {
-  const { daily, streak, level, week, stats } = useStore()
+  const { daily, streak, level, week, stats, unlocked } = useStore()
   const { actions } = useActions()
   const nav = useNavigate()
 
-  const [sc, setSc] = useState(() => dailyChallenge())
+  const [practiceSc, setPracticeSc] = useState(null)
   const [round, setRound] = useState(0)
   const [practice, setPractice] = useState(false)
   const [answeredOnce, setAnsweredOnce] = useState(false)
@@ -336,41 +376,60 @@ export default function Daily() {
   const tk = todayKey()
   const completedToday = daily.lastDone === tk
   const mode = practice || completedToday ? 'practice' : 'daily'
+
+  /* Only modules the learner has unlocked: a locked module must never pay XP. */
+  const bank = useMemo(() => {
+    const open = sixtySecondBank.filter((c) => unlocked[c.moduleId])
+    return open.length ? open : [dailyChallenge()]
+  }, [unlocked])
+
+  /* Today's scenario: the canonical daily pick when open, else a stable pick from the open bank.
+     Keyed on the day so a tab left open across midnight moves on. */
+  const dailySc = useMemo(() => {
+    const canon = dailyChallenge()
+    if (bank.some((c) => c.id === canon.id)) return canon
+    const d = new Date()
+    return bank[(d.getFullYear() * 372 + (d.getMonth() + 1) * 31 + d.getDate()) % bank.length]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tk, bank])
+
+  const sc = practice && practiceSc ? practiceSc : dailySc
   const mod = getModuleById(sc.moduleId)
+  const cleared = (stats[sc.moduleId]?.scenarioIds || []).includes(sc.id)
+
+  // a new day re-arms the once-a-day guard
+  useEffect(() => {
+    dailySentRef.current = false
+  }, [tk])
 
   /* a practice scenario the user has not already cleared, so the XP still lands */
   const pickPractice = useCallback(() => {
-    const undone = sixtySecondBank.filter(
-      (c) => !(stats[c.moduleId]?.scenarioIds || []).includes(c.id),
-    )
-    const bank = undone.length ? undone : sixtySecondBank
-    return bank[Math.floor(Math.random() * bank.length)]
-  }, [stats])
+    const undone = bank.filter((c) => !(stats[c.moduleId]?.scenarioIds || []).includes(c.id))
+    const pool = undone.length ? undone : bank
+    return pool[Math.floor(Math.random() * pool.length)]
+  }, [bank, stats])
 
   const handleSubmit = useCallback(
     async (isRight) => {
       setAnsweredOnce(true)
       if (mode === 'daily') {
-        if (dailySentRef.current) return
+        if (dailySentRef.current) return false
         dailySentRef.current = true
-        await actions.completeDaily()
-        return
+        return Boolean(await actions.completeDaily(isRight))
       }
       await actions.completeScenario(sc.moduleId, sc.id, isRight)
+      return false
     },
     [actions, mode, sc],
   )
 
   const nextScenario = useCallback(() => {
-    setSc(pickPractice())
+    setPractice(true)
+    setPracticeSc(pickPractice())
     setRound((r) => r + 1)
   }, [pickPractice])
 
-  const startPractice = useCallback(() => {
-    setPractice(true)
-    setSc(pickPractice())
-    setRound((r) => r + 1)
-  }, [pickPractice])
+  const startPractice = nextScenario
 
   const showPlay = mode === 'daily' || practice || answeredOnce
   const levelToNext = level.isMax ? 'Top level reached' : `${formatNumber(level.toNext)} XP to next level`
@@ -400,6 +459,7 @@ export default function Daily() {
           key={`${sc.id}-${round}`}
           sc={sc}
           mode={mode}
+          cleared={cleared}
           onSubmit={handleSubmit}
           onNext={nextScenario}
           onExit={() => nav('/dashboard')}
@@ -479,16 +539,18 @@ export default function Daily() {
           >
             Try the 60-second version
           </Button>
-          <Button
-            as={Link}
-            to={`/lesson/${mod?.id}`}
-            variant="quiet"
-            size="sm"
-            iconRight={ArrowRight}
-            className="w-full sm:w-auto"
-          >
-            Open {mod?.name}
-          </Button>
+          {mod && unlocked[mod.id] && (
+            <Button
+              as={Link}
+              to={`/lesson/${mod.id}`}
+              variant="quiet"
+              size="sm"
+              iconRight={ArrowRight}
+              className="w-full sm:w-auto"
+            >
+              Open {mod.name}
+            </Button>
+          )}
         </div>
       </section>
 

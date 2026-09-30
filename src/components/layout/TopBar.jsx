@@ -10,7 +10,7 @@
  *     leave a wrong number on screen, so there is no count-up here at all.
  *   - Search rows carry a 16px Sigil — the row's only differentiator.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Search as SearchIcon, X, Command, Flame, Sparkles, Menu, ChevronRight } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -19,7 +19,6 @@ import { formatNumber } from '../../lib/dates.js'
 import { levelNumber } from '../../lib/gamification.js'
 import { searchIndex } from '../../data/modules.js'
 import { NAV_ITEMS } from './nav.js'
-import { useActions } from '../../lib/store.jsx'
 import { Monogram, Sigil } from '../ui/index.jsx'
 
 const ease = [0.16, 1, 0.3, 1]
@@ -30,6 +29,9 @@ export function GlobalSearch({ autoFocus = false, onNavigate, className = '' }) 
   const [open, setOpen] = useState(autoFocus)
   const nav = useNavigate()
   const boxRef = useRef(null)
+  const inputRef = useRef(null)
+  const [active, setActive] = useState(0)
+  const listId = useId()
 
   const term = q.trim().toLowerCase()
   const results = term
@@ -42,6 +44,9 @@ export function GlobalSearch({ autoFocus = false, onNavigate, className = '' }) 
         )
         .slice(0, 6)
     : []
+  const showList = open && !!term
+  const hrefOf = (r) => r.href || `/learn?focus=${r.moduleId}`
+  const optId = (i) => `${listId}-opt-${i}`
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -49,8 +54,10 @@ export function GlobalSearch({ autoFocus = false, onNavigate, className = '' }) 
     }
     const onKey = (e) => {
       if (e.key === 'Escape') setOpen(false)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault()
+        inputRef.current?.focus()
+        inputRef.current?.select()
         setOpen(true)
       }
     }
@@ -71,19 +78,37 @@ export function GlobalSearch({ autoFocus = false, onNavigate, className = '' }) 
           strokeWidth={2.2}
         />
         <input
+          ref={inputRef}
+          role="combobox"
+          aria-label="Search lessons and topics"
+          aria-expanded={showList}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={showList && results.length ? optId(Math.min(active, results.length - 1)) : undefined}
           value={q}
           autoFocus={autoFocus}
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             setQ(e.target.value)
+            setActive(0)
             setOpen(true)
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && results[0]) {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+              if (!results.length) return
+              e.preventDefault()
+              setOpen(true)
+              const step = e.key === 'ArrowDown' ? 1 : -1
+              setActive((i) => (Math.min(i, results.length - 1) + step + results.length) % results.length)
+            } else if (e.key === 'Escape') {
+              setOpen(false)
+            } else if (e.key === 'Enter' && showList && results.length) {
+              e.preventDefault()
+              const hit = results[Math.min(active, results.length - 1)]
               setOpen(false)
               setQ('')
               onNavigate?.()
-              nav(results[0].href || `/learn?focus=${results[0].moduleId}`)
+              nav(hrefOf(hit))
             }
           }}
           placeholder="Search scams, refunds, rights…"
@@ -107,8 +132,11 @@ export function GlobalSearch({ autoFocus = false, onNavigate, className = '' }) 
       </div>
 
       <AnimatePresence>
-        {open && term && (
+        {showList && (
           <motion.div
+            id={listId}
+            role={results.length ? 'listbox' : undefined}
+            aria-label="Search results"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
@@ -130,16 +158,23 @@ export function GlobalSearch({ autoFocus = false, onNavigate, className = '' }) 
                 </Link>
               </div>
             ) : (
-              results.map((r) => (
+              results.map((r, i) => (
                 <Link
                   key={`${r.kind}-${r.id}-${r.title}`}
-                  to={r.href || `/learn?focus=${r.moduleId}`}
+                  id={optId(i)}
+                  role="option"
+                  aria-selected={i === Math.min(active, results.length - 1)}
+                  tabIndex={-1}
+                  onMouseEnter={() => setActive(i)}
+                  to={hrefOf(r)}
                   onClick={() => {
                     setOpen(false)
                     setQ('')
                     onNavigate?.()
                   }}
-                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-200 hover:bg-white/[0.06]"
+                  className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-200 hover:bg-white/[0.06] ${
+                    i === Math.min(active, results.length - 1) ? 'bg-white/[0.06]' : ''
+                  }`}
                 >
                   <Sigil id={r.sigil} size={16} className="shrink-0 text-fg-dim" />
                   <span className="min-w-0 flex-1">
@@ -165,15 +200,13 @@ export function GlobalSearch({ autoFocus = false, onNavigate, className = '' }) 
 /* ---------------------------------------------------------------- Top bar */
 export function TopBar({ onOpenMenu }) {
   const { profile, level, streak, impact } = useStore()
-  const { pushToast } = useActions()
   const loc = useLocation()
-  const nav = useNavigate()
 
   const days = streak?.current || 0
   const crumbs = NAV_ITEMS.filter((n) => n.to !== '/' && loc.pathname.startsWith(n.to))
 
   return (
-    <header className="overlay-panel sticky top-0 z-40 border-b border-white/[0.06]">
+    <header aria-label="Top bar" className="overlay-panel sticky top-0 z-40 border-b border-white/[0.06]">
       <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4 py-3 sm:px-6">
         <button
           onClick={onOpenMenu}
@@ -223,16 +256,9 @@ export function TopBar({ onOpenMenu }) {
             <span className="num text-violet2-300">{levelNumber(level.level)}</span>
           </Link>
 
-          <button
-            onClick={() => {
-              nav('/profile')
-              pushToast?.({ title: 'Profile', body: 'Impact, badges and settings.' })
-            }}
-            aria-label="Profile"
-            className="lg:hidden"
-          >
+          <Link to="/profile" aria-label="Profile" className="lg:hidden">
             <Monogram name={profile?.name || 'Guest'} userId={profile?.userId} size="sm" />
-          </button>
+          </Link>
         </div>
       </div>
     </header>

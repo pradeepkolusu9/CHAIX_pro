@@ -121,9 +121,10 @@ export default function Emergency() {
   const onKey = (e) => {
     const i = SECTION_KEYS.indexOf(active)
     const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
-    if (!step) return
+    const jump = e.key === 'Home' ? 0 : e.key === 'End' ? SECTION_KEYS.length - 1 : -1
+    if (!step && jump < 0) return
     e.preventDefault()
-    const next = SECTION_KEYS[(i + step + SECTION_KEYS.length) % SECTION_KEYS.length]
+    const next = jump >= 0 ? SECTION_KEYS[jump] : SECTION_KEYS[(i + step + SECTION_KEYS.length) % SECTION_KEYS.length]
     setActive(next)
     document.getElementById(`tab-${next}`)?.focus()
   }
@@ -152,7 +153,7 @@ export default function Emergency() {
           </div>
 
           <div className="flex flex-col items-start gap-5 lg:items-center lg:text-center">
-            <div className="num-xl text-[112px] leading-[0.85] text-danger sm:text-[144px]" aria-label="One one two">
+            <div className="num-xl text-[112px] leading-[0.85] text-danger sm:text-[144px]" role="img" aria-label="One one two">
               112
             </div>
             <a href="tel:112" className="btn-danger btn-lg w-full justify-center sm:w-auto lg:min-w-[280px]">
@@ -169,7 +170,7 @@ export default function Emergency() {
           <div className="eyebrow mb-2">Helpline directory</div>
           <h2 className="t1">Find the right line</h2>
           <p className="copy mt-2">
-            Checked against each operator’s own publication on {niceDate(VERIFIED_ON)}. Helplines
+            Taken from each operator’s own publication (drafted {niceDate(VERIFIED_ON)}). Helplines
             change — confirm on the official site before you rely on one.
           </p>
         </div>

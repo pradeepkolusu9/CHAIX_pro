@@ -32,7 +32,10 @@ import {
 import { useStore, useActions } from '../lib/store.jsx'
 import { useBurst, useReducedMotionPref, useTicker } from '../lib/hooks.js'
 import { XP_RULES } from '../lib/gamification.js'
-import { pickSixtySecond } from '../data/challenges.js'
+import { sixtySecondBank } from '../data/challenges.js'
+import { todayKey } from '../lib/dates.js'
+import { sixtySecondXp } from '../lib/progression.js'
+import { useAnnounce } from '../lib/announce.jsx'
 import { getModuleById } from '../data/modules.js'
 import { toneFor } from '../lib/moduleTone.js'
 
@@ -48,8 +51,8 @@ const two = (n) => String(Math.max(0, Math.min(60, n))).padStart(2, '0')
 
 /* ---------------------------------------------------------------- the clock */
 /**
- * A large depleting ring. `frac` is time ELAPSED, so the arc is driven by
- * `pLeft`: it unwinds as time runs out. Green -> orange under 20s -> red under 10s.
+ * A large depleting ring. `frac` is time REMAINING (1 -> 0), so the arc
+ * unwinds as time runs out. Green -> orange under 20s -> red under 10s.
  * Ring strokes are >= 3:1 on white; the numerals use the darker text tokens.
  */
 function RunClock({ frac, secondsLeft, running }) {
@@ -74,7 +77,7 @@ function RunClock({ frac, secondsLeft, running }) {
           strokeLinecap="round"
           strokeDasharray={RING_C}
           initial={false}
-          animate={{ strokeDashoffset: RING_C * p }}
+          animate={{ strokeDashoffset: RING_C * (1 - p) }}
           transition={{ duration: reduce ? 0 : 0.12, ease: 'linear' }}
           style={{ filter: `drop-shadow(0 0 6px ${tone}55)` }}
         />
@@ -162,7 +165,7 @@ function moduleUnits(mod, s = {}) {
     }),
   )
   ;(mod?.quiz || []).forEach((q, i) =>
-    out.push({ key: `q-${q.id || i}`, state: s.quizDone ? 'done' : 'todo', xp: XP_RULES.quizCorrect }),
+    out.push({ key: `q-${q.id || i}`, state: (s.quizBest || 0) > i ? 'done' : 'todo', xp: XP_RULES.quizCorrect }),
   )
   out.push({ key: 'topic', state: s.completed ? 'done' : 'todo', xp: XP_RULES.topicComplete })
   return out
@@ -256,7 +259,8 @@ function OptionRow({ opt, index, state, isPicked, isCorrect, onPick }) {
 
 /* ------------------------------------------------------------------- page */
 export default function Speed() {
-  const { sixtySecond, stats } = useStore()
+  const { sixtySecond, stats, unlocked } = useStore()
+  const say = useAnnounce()
   const { actions } = useActions()
   const { parts, fire } = useBurst(2400)
   const reduce = useReducedMotionPref()
@@ -269,8 +273,13 @@ export default function Speed() {
   const [closed, setClosed] = useState(null) // 'answered' | 'timeout' | 'skip'
   const [busy, setBusy] = useState(false)
   const [step, setStep] = useState(0) // reveal stage — 0 idle, 1 verdict, 2 why, 3 reward
+  const [leftAtPick, setLeftAtPick] = useState(0) // seconds on the clock when the run ended
+  const [earned, setEarned] = useState(0) // XP the store will actually have paid
   const firedRef = useRef(false)
   const sentRef = useRef(false)
+  const verdictRef = useRef(null)
+  const questionRef = useRef(null)
+  const focusedRef = useRef(false)
 
   const running = phase === 'play' && !closed
   const now = useTicker(running, 100)
@@ -292,6 +301,7 @@ export default function Speed() {
     }
     if (firedRef.current) return
     firedRef.current = true
+    setLeftAtPick(0)
     setClosed('timeout')
     setPicked(null)
     setPhase('result')
@@ -323,23 +333,30 @@ export default function Speed() {
     setClosed(null)
     setBusy(false)
     setStep(0)
+    setLeftAtPick(0)
+    setEarned(0)
+    focusedRef.current = false
     const t = Date.now()
     setStartAt(t)
     setDeadline(t + RUN_MS)
     setPhase('play')
   }, [])
 
-  const start = useCallback(() => startRun(pickSixtySecond(Math.random())), [startRun])
+  /* Only unlocked modules: a locked one must never be playable or pay. */
+  const bank = useMemo(() => {
+    const open = sixtySecondBank.filter((c) => unlocked[c.moduleId])
+    return open.length ? open : sixtySecondBank.slice(0, 1)
+  }, [unlocked])
+  const draw = useCallback(
+    (avoidId) => {
+      const pool = bank.length > 1 ? bank.filter((c) => c.id !== avoidId) : bank
+      return pool[Math.floor(Math.random() * pool.length)]
+    },
+    [bank],
+  )
 
-  const again = useCallback(() => {
-    let next = pickSixtySecond(Math.random())
-    let guard = 0
-    while (next?.id === sc?.id && guard < 8) {
-      next = pickSixtySecond(Math.random())
-      guard += 1
-    }
-    startRun(next)
-  }, [sc, startRun])
+  const start = useCallback(() => startRun(draw()), [draw, startRun])
+  const again = useCallback(() => startRun(draw(sc?.id)), [draw, sc, startRun])
 
   const pick = useCallback(
     async (optId) => {
@@ -347,6 +364,10 @@ export default function Speed() {
       sentRef.current = true
       const right = optId === sc.correct
       setPicked(optId)
+      setLeftAtPick(secondsLeft)
+      // Mirror the store: only a scoring run pays, and the daily cap can zero it.
+      const sz = sixtySecond || {}
+      setEarned(right ? sixtySecondXp({ clearedToday: sz.lastCleared === todayKey() ? sz.clearedToday || 0 : 0 }) : 0)
       setClosed('answered')
       if (right) fire(44)
       setBusy(true)
@@ -360,11 +381,12 @@ export default function Speed() {
         setPhase('result')
       }
     },
-    [actions, closed, fire, phase, sc],
+    [actions, closed, fire, phase, sc, secondsLeft, sixtySecond],
   )
 
   const skip = useCallback(() => {
     if (phase !== 'play' || closed) return
+    setLeftAtPick(0)
     setClosed('skip')
     setPicked(null)
     setPhase('result')
@@ -378,6 +400,24 @@ export default function Speed() {
   const units = useMemo(() => moduleUnits(mod, mStat), [mod, mStat])
   const isWin = closed === 'answered' && picked === sc?.correct
   const playState = closed === 'answered' ? 'answered' : closed ? 'ended' : 'idle'
+  const lessonOpen = Boolean(sc && unlocked[sc.moduleId])
+
+  /* Announce the outcome once, and give focus a home: the answered button unmounts. */
+  useEffect(() => {
+    if (phase !== 'result') return
+    const head = isWin ? 'Right call.' : closed === 'timeout' ? 'Time is up.' : closed === 'skip' ? 'Skipped.' : 'Not this time.'
+    say(`${head} ${isWin ? (earned ? `+${earned} XP.` : 'No XP, the daily cap is reached.') : 'No XP, the reward needs the right move.'} ${sc?.why || ''}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, closed])
+  useEffect(() => {
+    if (phase === 'result' && step >= 1 && !focusedRef.current) {
+      focusedRef.current = true
+      verdictRef.current?.focus({ preventScroll: true })
+    }
+  }, [phase, step])
+  useEffect(() => {
+    if (phase === 'play') questionRef.current?.focus({ preventScroll: true })
+  }, [phase])
   /* -------------------------------------------------------------- intro */
   if (phase === 'intro') {
     const RULES = [
@@ -424,8 +464,8 @@ export default function Speed() {
   }
 
   const verdictCopy = isWin
-    ? secondsLeft > 0
-      ? `Fast and correct, ${secondsLeft} second${secondsLeft === 1 ? '' : 's'} to spare.`
+    ? leftAtPick > 0
+      ? `Fast and correct, ${leftAtPick} second${leftAtPick === 1 ? '' : 's'} to spare.`
       : 'Correct, but only just made it.'
     : closed === 'timeout'
       ? 'The clock beat you. Read the move you needed, then run it again.'
@@ -445,7 +485,9 @@ export default function Speed() {
         </div>
       </div>
 
-      <h2 className="case-title mt-5">{sc.title}</h2>
+      <h2 ref={questionRef} tabIndex={-1} className="case-title mt-5 focus:outline-none">
+        {sc.title}
+      </h2>
       <p className="lead measure mt-3">{sc.situation}</p>
 
       <div className="mt-6 space-y-3">
@@ -514,18 +556,23 @@ export default function Speed() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, ease: EASE }}
-                className="sheet-lg sheet-focal p-6 text-center sm:p-10"
+                ref={verdictRef}
+                tabIndex={-1}
+                className="sheet-lg sheet-focal p-6 text-center focus:outline-none sm:p-10"
                 aria-label="Run result"
               >
                 <ScoreRing win={isWin} />
                 <h1 className="t1 mt-5">{isWin ? 'Right call' : closed === 'timeout' ? 'Time is up' : 'Not this time'}</h1>
                 <p className="copy mx-auto mt-2 max-w-sm">{verdictCopy}</p>
                 <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-                  <Pill tone={isWin ? 'xp' : 'default'}>+{isWin ? XP_RULES.sixtySecond : 0} XP</Pill>
+                  <Pill tone={earned ? 'xp' : 'default'}>+{earned} XP</Pill>
                   <Pill icon={Trophy}>Best {sixtySecond.best}/1</Pill>
                 </div>
                 {!isWin && (
                   <p className="caption mt-2">The reward needs the right move. Up to 3 clears a day pay XP.</p>
+                )}
+                {isWin && !earned && (
+                  <p className="caption mt-2">Cleared, but today&apos;s 3 XP-paying clears are used up.</p>
                 )}
 
                 <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+76px)] z-10 -mx-2 mt-6 flex flex-col gap-2 rounded-2xl bg-pure/90 p-2 backdrop-blur sm:static sm:mx-0 sm:flex-row sm:justify-center sm:bg-transparent sm:p-0 sm:backdrop-blur-none lg:bottom-4">
@@ -584,13 +631,15 @@ export default function Speed() {
                   <div className="eyebrow mb-2">{mod?.name} progress</div>
                   <RewardSegments units={units} />
                 </div>
-                <Link
-                  to={`/lesson/${sc.moduleId}`}
-                  className="flex min-h-[44px] items-center justify-center gap-1.5 text-caption font-semibold text-fg-dim transition-colors hover:text-fg"
-                >
-                  <BookOpen size={13} strokeWidth={2.2} />
-                  Read the full lesson: {mod?.name}
-                </Link>
+                {lessonOpen && (
+                  <Link
+                    to={`/lesson/${sc.moduleId}`}
+                    className="flex min-h-[44px] items-center justify-center gap-1.5 text-caption font-semibold text-fg-dim transition-colors hover:text-fg"
+                  >
+                    <BookOpen size={13} strokeWidth={2.2} />
+                    Read the full lesson: {mod?.name}
+                  </Link>
+                )}
                 <DisclaimerNote compact />
               </motion.section>
             )}

@@ -7,7 +7,7 @@
  * The ONE primary action is "Try the demo". Sign-in is an honest local prototype.
  */
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Zap,
@@ -29,7 +29,7 @@ import {
   Trophy,
 } from 'lucide-react'
 import { useStore, useActions, demoState } from '../lib/store.jsx'
-import { Skeleton, Button, IconBadge, ProgressBar, formatNumber } from '../components/ui/index.jsx'
+import { Skeleton, Button, ConfirmModal, IconBadge, ProgressBar, formatNumber } from '../components/ui/index.jsx'
 import { levelForXp, levelNumber } from '../lib/gamification.js'
 
 const EASE = [0.16, 1, 0.3, 1]
@@ -115,7 +115,15 @@ export default function Auth() {
   const { profile, ready, level, impact } = useStore()
   const { actions, pushToast } = useActions()
   const nav = useNavigate()
+  const location = useLocation()
+  /* Where to go after signing in: the page RequireAuth bounced us from (path + search + hash). */
+  const rawFrom = location.state?.from
+  const from =
+    typeof rawFrom === 'string' && rawFrom.startsWith('/') && !rawFrom.startsWith('//') && !rawFrom.startsWith('/login')
+      ? rawFrom
+      : '/dashboard'
 
+  const [confirm, setConfirm] = useState(null) // 'demo' | 'out' | null
   const [mode, setMode] = useState('signin')
   const [form, setForm] = useState(emptyForm)
   const [errors, setErrors] = useState({})
@@ -152,17 +160,13 @@ export default function Auth() {
   const setRemember = (e) => {
     const remember = e.target.checked
     setForm((f) => ({ ...f, remember }))
-    try {
-      if (remember) {
-        window.localStorage.setItem(
-          REMEMBER_KEY,
-          JSON.stringify({ name: form.name.trim(), email: form.email.trim(), college: form.college.trim() }),
-        )
-      } else {
+    // Persisting happens on a successful submit, with the final values; only forgetting is immediate.
+    if (!remember) {
+      try {
         window.localStorage.removeItem(REMEMBER_KEY)
+      } catch {
+        /* ignore */
       }
-    } catch {
-      /* ignore — not worth interrupting the user for */
     }
   }
 
@@ -176,7 +180,7 @@ export default function Auth() {
     setDemoBusy(true)
     try {
       await actions.loadDemo()
-      nav('/dashboard')
+      nav(from, { replace: true })
     } finally {
       setDemoBusy(false)
     }
@@ -216,12 +220,23 @@ export default function Auth() {
     e.preventDefault()
     const found = validate(form)
     setErrors(found)
-    if (Object.keys(found).length) return
+    const firstBad = ['name', 'email', 'password'].find((k) => found[k])
+    if (firstBad) {
+      document.getElementById(`auth-${firstBad}`)?.focus()
+      return
+    }
 
     setBusy(true)
     try {
-      await actions.login(form.name.trim(), { email: form.email.trim(), college: form.college.trim() })
-      nav('/dashboard')
+      const values = { name: form.name.trim(), email: form.email.trim(), college: form.college.trim() }
+      try {
+        if (form.remember) window.localStorage.setItem(REMEMBER_KEY, JSON.stringify(values))
+        else window.localStorage.removeItem(REMEMBER_KEY)
+      } catch {
+        /* storage blocked — signing in still works */
+      }
+      await actions.login(values.name, { email: values.email, college: values.college })
+      nav(from, { replace: true })
     } finally {
       setBusy(false)
     }
@@ -247,13 +262,13 @@ export default function Auth() {
         </span>
       </div>
       <div className="space-y-2">
-        <Button as={Link} to="/dashboard" variant="primary" size="lg" className="w-full" iconRight={ArrowRight}>
-          Continue to Dashboard
+        <Button as={Link} to={from} replace variant="primary" size="lg" className="w-full" iconRight={ArrowRight}>
+          {from === '/dashboard' ? 'Continue to Dashboard' : 'Continue'}
         </Button>
-        <Button variant="quiet" className="w-full" icon={RotateCcw} loading={resetBusy} onClick={resetDemo}>
+        <Button variant="quiet" className="w-full" icon={RotateCcw} loading={resetBusy} onClick={() => (profile.isDemo ? resetDemo() : setConfirm('demo'))}>
           Load the demo account
         </Button>
-        <Button variant="quiet" className="w-full" icon={LogOut} loading={outBusy} onClick={signOut}>
+        <Button variant="quiet" className="w-full" icon={LogOut} loading={outBusy} onClick={() => setConfirm('out')}>
           Sign out
         </Button>
       </div>
@@ -370,7 +385,7 @@ export default function Auth() {
         </Button>
 
         <p className="text-center text-caption leading-relaxed text-fg-dim">
-          This is a local prototype. Your account stays on this device and nothing you type is sent anywhere.
+          This is a local prototype. Your progress and account data stay on this device.
         </p>
       </form>
     </>
@@ -403,6 +418,28 @@ export default function Auth() {
 
   return (
     <div className="min-h-screen px-4 py-5 sm:px-6 sm:py-8">
+      <ConfirmModal
+        open={confirm === 'demo'}
+        onClose={() => setConfirm(null)}
+        onConfirm={() => {
+          setConfirm(null)
+          resetDemo()
+        }}
+        title="Replace your account with the demo?"
+        body="This device's progress and account will be replaced by the demo data. You can't undo this."
+        confirmLabel="Replace with demo"
+      />
+      <ConfirmModal
+        open={confirm === 'out'}
+        onClose={() => setConfirm(null)}
+        onConfirm={() => {
+          setConfirm(null)
+          signOut()
+        }}
+        title="Sign out?"
+        body="Your progress on this device (XP, streak, badges) will be removed. You can't undo this."
+        confirmLabel="Sign out and remove progress"
+      />
       <div className="mx-auto w-full max-w-6xl">
         <motion.header {...rise(0)} className="flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-2.5">

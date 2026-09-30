@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Rotating "Did you know?" legal awareness cards.
  * Every fact is a verifiable, non-advice statement. Rotates daily + on demand.
  */
@@ -6,7 +6,7 @@ export const FACTS = [
   {
     id: 'f1',
     title: 'Not every dispute needs a court',
-    body: 'Most consumer and service complaints are resolved earlier through a grievance officer or a lok adalat than in a courtroom. A lok adalat is a legal settlement meeting, and an award made there is treated as a decree of a civil court.',
+    body: 'Many consumer and service complaints can be settled earlier through a grievance officer or a lok adalat than in a courtroom. A lok adalat is a legal settlement meeting, and an award made there is treated as a decree of a civil court.',
     link: 'https://nalsa.gov.in',
     linkLabel: 'NALSA — National Legal Services Authority',
     module: 'consumer',
@@ -21,10 +21,10 @@ export const FACTS = [
   },
   {
     id: 'f3',
-    title: 'Section 65B decides if your screenshot counts',
-    body: 'Digital records have to be produced in a form the law recognises. That is why a full-screen screenshot showing the time and sender is stronger evidence than a cropped one.',
+    title: 'Section 63 decides if your screenshot counts',
+    body: 'Digital records have to be produced in a form the law recognises — Section 63 of the Bharatiya Sakshya Adhiniyam, 2023, in force from 1 July 2024, which replaced Section 65B of the Evidence Act. That is why a full-screen screenshot showing the time and sender is stronger evidence than a cropped one.',
     link: 'https://www.indiacode.nic.in',
-    linkLabel: 'India Code — Information Technology Act, 2000',
+    linkLabel: 'India Code — Bharatiya Sakshya Adhiniyam, 2023',
     module: 'cybercrime',
   },
   {
@@ -38,15 +38,15 @@ export const FACTS = [
   {
     id: 'f5',
     title: 'Ragging is a legal offence, not a tradition',
-    body: 'Ragging is prohibited under the Ragging Prohibition Act, 2009. Every institution is required to have an anti-ragging committee, and ragging can attract punishment including fine and exclusion from the institution.',
-    link: 'https://nios.ac.in',
-    linkLabel: 'NIOS — anti-ragging guidance',
+    body: 'Ragging is prohibited under the UGC Regulations on Curbing the Menace of Ragging, 2009, and several states have their own anti-ragging laws. Every institution is required to have an anti-ragging committee, and serious cases can also lead to police action.',
+    link: 'https://www.antiragging.in',
+    linkLabel: 'UGC anti-ragging portal',
     module: 'student',
   },
   {
     id: 'f6',
     title: 'The legal BAC limit is 30 mg per 100 ml',
-    body: 'That is 0.03% of alcohol in your blood, notified by the Ministry of Road Transport and Highways. Riding after drinking is an offence under section 185 of the Motor Vehicles Act, 1988, and the court can disqualify your licence.',
+    body: 'That is 0.03% of alcohol in your blood, the limit set in Section 185 of the Motor Vehicles Act, 1988. Riding after drinking is an offence under that section, and the court can also disqualify your licence.',
     link: 'https://morth.nic.in',
     linkLabel: 'Ministry of Road Transport and Highways',
     module: 'road',
@@ -70,7 +70,7 @@ export const FACTS = [
   {
     id: 'f9',
     title: 'Equal pay for equal work is the law',
-    body: 'The Code on Wages, 2019 prohibits discrimination in wages on the ground of gender, and lets an employee ask a designated authority to inspect the records of an employer.',
+    body: 'The Code on Wages, 2019 prohibits discrimination in wages on the ground of gender.',
     link: 'https://labour.gov.in',
     linkLabel: 'Ministry of Labour and Employment',
     module: 'workplace',

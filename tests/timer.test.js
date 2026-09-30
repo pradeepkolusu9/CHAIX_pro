@@ -38,7 +38,7 @@ describe('ringArc', () => {
     expect(sy).toBeCloseTo(0, 3)
   })
 
-  it('ends on the horizontal axis for a quarter turn', () => {
+  it('ends on the vertical ring-space axis (x=0, y=r) for a quarter turn', () => {
     const d = ringArc({ r: g.r, sw: g.sw, sweepDeg: 90 })
     const parts = d.split(' ')
     const x = Number(parts[parts.length - 2])
@@ -86,8 +86,9 @@ describe('urgency tone keys off seconds remaining, not elapsed fraction', () => 
 })
 
 describe('formatClock', () => {
-  it('always reads 00:SS so the width never jumps', () => {
-    expect(formatClock(60)).toBe('00:60')
+  it('always reads MM:SS so the width never jumps, and never prints 00:60', () => {
+    expect(formatClock(60)).toBe('01:00')
+    expect(formatClock(59)).toBe('00:59')
     expect(formatClock(9)).toBe('00:09')
     expect(formatClock(0)).toBe('00:00')
   })
